@@ -1,0 +1,413 @@
+[
+  {
+    "id": "seed-recipe-31",
+    "name": "小米南瓜粥",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 30,
+    "nutrition": {"calories":430},
+    "image_url": "",
+    "ingredients": [
+      {"name":"小米","quantity":60,"unit":"g","role":"main"},
+      {"name":"南瓜","quantity":120,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "小米淘洗干净，南瓜去皮切小块。",
+      "锅中加水，下小米煮至开花。",
+      "加入南瓜煮软，轻轻搅匀后盛碗。"
+    ]
+  },
+  {
+    "id": "seed-recipe-32",
+    "name": "番茄鸡蛋面",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 18,
+    "nutrition": {"calories":605},
+    "image_url": "",
+    "ingredients": [
+      {"name":"面条","quantity":110,"unit":"g","role":"main"},
+      {"name":"番茄","quantity":160,"unit":"g","role":"side"},
+      {"name":"鸡蛋","quantity":2,"unit":"个","role":"side"}
+    ],
+    "steps": [
+      "番茄切丁，鸡蛋打散。",
+      "炒熟鸡蛋盛出，番茄炒出汁后加水。",
+      "下面条煮熟，放回炒蛋拌匀。"
+    ]
+  },
+  {
+    "id": "seed-recipe-33",
+    "name": "香菇青菜包",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 45,
+    "nutrition": {"calories":620},
+    "image_url": "",
+    "ingredients": [
+      {"name":"面粉","quantity":125,"unit":"g","role":"main"},
+      {"name":"青菜","quantity":120,"unit":"g","role":"side"},
+      {"name":"香菇","quantity":50,"unit":"g","role":"side"},
+      {"name":"酵母","quantity":2,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "面粉加酵母和温水揉成团，盖好发至两倍大。",
+      "香菇切丁炒香，青菜焯水挤干切碎后拌入。",
+      "面团分剂包馅，醒发后蒸熟，关火焖三分钟。"
+    ]
+  },
+  {
+    "id": "seed-recipe-34",
+    "name": "小葱蒸蛋",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 15,
+    "nutrition": {"calories":225},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鸡蛋","quantity":2,"unit":"个","role":"main"},
+      {"name":"小葱","quantity":10,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "鸡蛋打散，加入约一倍半温水搅匀。",
+      "滤去泡沫，盖上盘子后隔水蒸至凝固。",
+      "关火焖两分钟，撒上小葱即可。"
+    ]
+  },
+  {
+    "id": "seed-recipe-35",
+    "name": "豆腐青菜羹",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 16,
+    "nutrition": {"calories":310},
+    "image_url": "",
+    "ingredients": [
+      {"name":"豆腐","quantity":200,"unit":"g","role":"main"},
+      {"name":"青菜","quantity":80,"unit":"g","role":"side"},
+      {"name":"淀粉","quantity":10,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "豆腐切小块，青菜洗净切碎。",
+      "豆腐入沸水煮热，放入青菜煮至变绿。",
+      "用少量水调开淀粉，下锅搅匀并煮开。"
+    ]
+  },
+  {
+    "id": "seed-recipe-36",
+    "name": "葱香鸡蛋煎饼",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 17,
+    "nutrition": {"calories":630},
+    "image_url": "",
+    "ingredients": [
+      {"name":"面粉","quantity":105,"unit":"g","role":"main"},
+      {"name":"鸡蛋","quantity":2,"unit":"个","role":"side"},
+      {"name":"小葱","quantity":15,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "面粉和水搅成薄面糊，加入打散的鸡蛋与葱花。",
+      "平底锅薄刷油，舀入面糊摊圆。",
+      "煎至边缘翘起后翻面，两面金黄即可。"
+    ]
+  },
+  {
+    "id": "seed-recipe-37",
+    "name": "燕麦牛奶粥",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 12,
+    "nutrition": {"calories":610},
+    "image_url": "",
+    "ingredients": [
+      {"name":"燕麦","quantity":100,"unit":"g","role":"main"},
+      {"name":"牛奶","quantity":250,"unit":"ml","role":"side"}
+    ],
+    "steps": [
+      "燕麦与适量清水放入小锅。",
+      "煮沸后转小火，搅拌至燕麦软糯。",
+      "倒入牛奶搅匀，以小火加热后盛碗。"
+    ]
+  },
+  {
+    "id": "seed-recipe-38",
+    "name": "红薯杂粮粥",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 35,
+    "nutrition": {"calories":620},
+    "image_url": "",
+    "ingredients": [
+      {"name":"大米","quantity":100,"unit":"g","role":"main"},
+      {"name":"红薯","quantity":200,"unit":"g","role":"side"},
+      {"name":"小米","quantity":25,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "大米和小米淘洗，红薯去皮切丁。",
+      "锅里加水，把两种米煮到半熟。",
+      "加入红薯，再煮至米粒开花、红薯软烂。"
+    ]
+  },
+  {
+    "id": "seed-recipe-39",
+    "name": "芝麻拌面",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 15,
+    "nutrition": {"calories":660},
+    "image_url": "",
+    "ingredients": [
+      {"name":"面条","quantity":130,"unit":"g","role":"main"},
+      {"name":"芝麻酱","quantity":25,"unit":"g","role":"side"},
+      {"name":"黄瓜","quantity":90,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "黄瓜切丝，芝麻酱用凉开水调稀。",
+      "面条下锅煮熟，沥水后装入碗里。",
+      "拌入芝麻酱，铺上黄瓜丝。"
+    ]
+  },
+  {
+    "id": "seed-recipe-40",
+    "name": "嫩豆腐鸡蛋羹",
+    "meal_type": "breakfast",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 18,
+    "nutrition": {"calories":300},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鸡蛋","quantity":2,"unit":"个","role":"main"},
+      {"name":"豆腐","quantity":160,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "嫩豆腐切小块放入耐热碗中。",
+      "鸡蛋和温水打匀，滤进豆腐碗里。",
+      "水开后隔水蒸至蛋液凝固，出锅稍晾。"
+    ]
+  },
+  {
+    "id": "seed-recipe-41",
+    "name": "清炒上海青",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 9,
+    "nutrition": {"calories":110},
+    "image_url": "",
+    "ingredients": [
+      {"name":"上海青","quantity":240,"unit":"g","role":"main"},
+      {"name":"大蒜","quantity":8,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "上海青拆开洗净，分开菜梗和菜叶。",
+      "蒜末爆香，先把菜梗翻炒至变软。",
+      "加入菜叶炒到断生，调味出锅。"
+    ]
+  },
+  {
+    "id": "seed-recipe-42",
+    "name": "萝卜炖鸡汤",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","荤菜"],
+    "duration_min": 45,
+    "nutrition": {"calories":340},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鸡肉","quantity":225,"unit":"g","role":"main"},
+      {"name":"白萝卜","quantity":180,"unit":"g","role":"side"},
+      {"name":"生姜","quantity":10,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "鸡肉切块焯水，白萝卜切滚刀块。",
+      "鸡块和姜片加清水，煮开后转小火。",
+      "放入白萝卜炖软，鸡肉熟透后调味。"
+    ]
+  },
+  {
+    "id": "seed-recipe-43",
+    "name": "红烧豆腐",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 20,
+    "nutrition": {"calories":230},
+    "image_url": "",
+    "ingredients": [
+      {"name":"豆腐","quantity":230,"unit":"g","role":"main"},
+      {"name":"生抽","quantity":10,"unit":"ml","role":"side"},
+      {"name":"大蒜","quantity":8,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "豆腐切块，擦去表面水分。",
+      "豆腐两面煎黄，加入蒜末炒香。",
+      "加生抽和少量水焖入味，收汁后出锅。"
+    ]
+  },
+  {
+    "id": "seed-recipe-44",
+    "name": "香菇蒸鸡腿",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","荤菜"],
+    "duration_min": 25,
+    "nutrition": {"calories":360},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鸡腿","quantity":220,"unit":"g","role":"main"},
+      {"name":"香菇","quantity":60,"unit":"g","role":"side"},
+      {"name":"生姜","quantity":8,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "鸡腿去骨切块，香菇切片。",
+      "鸡腿拌姜丝调味，和香菇一起铺入盘中。",
+      "水开入锅蒸，至最厚的鸡块完全熟透。"
+    ]
+  },
+  {
+    "id": "seed-recipe-45",
+    "name": "小米二米饭",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 30,
+    "nutrition": {"calories":270},
+    "image_url": "",
+    "ingredients": [
+      {"name":"大米","quantity":60,"unit":"g","role":"main"},
+      {"name":"小米","quantity":15,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "大米和小米淘洗后沥水。",
+      "倒入电饭煲，加水到对应的煮饭刻度。",
+      "启动煮饭，完成后焖五分钟再拌松。"
+    ]
+  },
+  {
+    "id": "seed-recipe-46",
+    "name": "南瓜杂粮饭",
+    "meal_type": "lunch",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 30,
+    "nutrition": {"calories":285},
+    "image_url": "",
+    "ingredients": [
+      {"name":"大米","quantity":55,"unit":"g","role":"main"},
+      {"name":"小米","quantity":15,"unit":"g","role":"side"},
+      {"name":"南瓜","quantity":90,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "大米和小米淘洗，南瓜去皮切丁。",
+      "米加水放入电饭煲，上面铺南瓜丁。",
+      "饭熟后焖几分钟，翻拌均匀。"
+    ]
+  },
+  {
+    "id": "seed-recipe-47",
+    "name": "清炒油麦菜",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 9,
+    "nutrition": {"calories":115},
+    "image_url": "",
+    "ingredients": [
+      {"name":"油麦菜","quantity":250,"unit":"g","role":"main"},
+      {"name":"大蒜","quantity":8,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "油麦菜洗净切段，沥干水。",
+      "热锅下蒜末，再加油麦菜大火快炒。",
+      "叶片变软时调味，翻匀出锅。"
+    ]
+  },
+  {
+    "id": "seed-recipe-48",
+    "name": "番茄豆腐汤",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","素菜"],
+    "duration_min": 20,
+    "nutrition": {"calories":190},
+    "image_url": "",
+    "ingredients": [
+      {"name":"番茄","quantity":180,"unit":"g","role":"main"},
+      {"name":"豆腐","quantity":140,"unit":"g","role":"side"},
+      {"name":"小葱","quantity":8,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "番茄切块，豆腐切小丁。",
+      "将番茄炒出汁后加水煮开。",
+      "放入豆腐煮几分钟，撒葱花后盛碗。"
+    ]
+  },
+  {
+    "id": "seed-recipe-49",
+    "name": "红烧鸡块",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","荤菜"],
+    "duration_min": 34,
+    "nutrition": {"calories":390},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鸡肉","quantity":240,"unit":"g","role":"main"},
+      {"name":"生姜","quantity":10,"unit":"g","role":"side"},
+      {"name":"生抽","quantity":15,"unit":"ml","role":"side"}
+    ],
+    "steps": [
+      "鸡肉切块焯水沥干，生姜切片。",
+      "把鸡块和姜片煸香，加入生抽与水。",
+      "小火焖至鸡肉熟透，转大火收汁。"
+    ]
+  },
+  {
+    "id": "seed-recipe-50",
+    "name": "清蒸鳕鱼",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","荤菜"],
+    "duration_min": 18,
+    "nutrition": {"calories":300},
+    "image_url": "",
+    "ingredients": [
+      {"name":"鳕鱼","quantity":200,"unit":"g","role":"main"},
+      {"name":"生姜","quantity":10,"unit":"g","role":"side"},
+      {"name":"小葱","quantity":10,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "鳕鱼擦干，放在铺好姜丝的盘中。",
+      "水开后把鱼放入蒸锅，蒸到鱼肉熟透。",
+      "倒掉多余蒸汁，撒葱丝并调味。"
+    ]
+  },
+  {
+    "id": "seed-recipe-51",
+    "name": "蒸红薯玉米",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 26,
+    "nutrition": {"calories":255},
+    "image_url": "",
+    "ingredients": [
+      {"name":"红薯","quantity":145,"unit":"g","role":"main"},
+      {"name":"玉米","quantity":105,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "红薯刷洗干净后切段，玉米切块。",
+      "蒸锅加水，红薯和玉米放进蒸屉。",
+      "上汽后蒸到红薯可用筷子戳透。"
+    ]
+  },
+  {
+    "id": "seed-recipe-52",
+    "name": "香菇焖饭",
+    "meal_type": "dinner",
+    "tags": ["中式","家常","主食"],
+    "duration_min": 35,
+    "nutrition": {"calories":315},
+    "image_url": "",
+    "ingredients": [
+      {"name":"大米","quantity":75,"unit":"g","role":"main"},
+      {"name":"香菇","quantity":60,"unit":"g","role":"side"},
+      {"name":"胡萝卜","quantity":50,"unit":"g","role":"side"}
+    ],
+    "steps": [
+      "大米淘洗，香菇和胡萝卜切丁。",
+      "香菇与胡萝卜略炒，和大米一起入电饭煲。",
+      "加水煮熟，焖几分钟后翻拌均匀。"
+    ]
+  }
+]

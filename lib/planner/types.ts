@@ -78,10 +78,13 @@ export interface GenerateMealsInput {
   mealTypes?: MealType[];
   servings?: number;
   recentRecipeIds?: string[];
+  excludeRecipeIds?: string[];
+  excludeFingerprints?: string[];
   requiredComposition?: Partial<Record<MealType, DishType[]>>;
   inventorySatisfactionThreshold?: number;
-  /** Deterministic pass-through metadata; it does not affect candidate scoring. */
+  /** Seed for the recipe score perturbation. Defaults to the current timestamp. */
   seed?: number;
+  diversity?: number;
 }
 export interface GenerateMealsResult {
   meals: Plan[];

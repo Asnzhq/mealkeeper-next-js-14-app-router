@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import path from "node:path";
 import builtinRecipeImages from "@/prisma/recipe-seed-images.json";
+import newRecipes from "@/prisma/recipe-seed-additions.json";
 import { validateRecipeImageAssets } from "@/server/recipe-assets.mjs";
 
 const prisma = new PrismaClient();
@@ -43,11 +44,15 @@ function buildSeedRecipes() {
 }
 
 async function main() {
-  const recipes = buildSeedRecipes();
+  const recipes = [...buildSeedRecipes(), ...newRecipes];
   validateRecipeImageAssets(recipes, path.resolve(process.cwd(), "public", "recipes"));
   for (const recipe of recipes) {
     const { id, ...data } = recipe;
-    await prisma.recipe.upsert({ where: { id }, update: data as Prisma.RecipeUncheckedUpdateInput, create: { id, ...data } as Prisma.RecipeUncheckedCreateInput });
+    await prisma.recipe.upsert({
+      where: { id },
+      update: { ...data, image_url: data.image_url || undefined } as Prisma.RecipeUncheckedUpdateInput,
+      create: { id, ...data } as Prisma.RecipeUncheckedCreateInput,
+    });
   }
 }
 

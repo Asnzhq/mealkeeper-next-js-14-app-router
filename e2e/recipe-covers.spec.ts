@@ -64,19 +64,32 @@ test("本地封面文件缺失时卡片自动切换为占位图", async ({ page,
   }
 });
 
-test("30 道内置菜谱列表和详情都使用无远程请求的确定性占位图", async ({ page, request }) => {
+test("扩充后的 52 道内置菜谱显示占位，且没有失败的图片请求", async ({ page, request }) => {
   const apiResponse = await request.get("/api/recipes");
-  const recipes = await apiResponse.json() as { data: Array<{ id: string; name: string; image_url: string }> };
+  const recipes = await apiResponse.json() as { data: Array<{ id: string; name: string; meal_type: string; image_url: string }> };
   const builtins = recipes.data.filter((recipe) => recipe.id.startsWith("seed-recipe-"));
-  expect(builtins).toHaveLength(30);
+  expect(builtins).toHaveLength(52);
+  for (const [type, minimum] of [["breakfast", 12], ["lunch", 20], ["dinner", 20]] as const) {
+    expect(builtins.filter((recipe) => recipe.meal_type === type).length).toBeGreaterThanOrEqual(minimum);
+  }
   expect(builtins.every((recipe) => recipe.image_url === "")).toBe(true);
 
   const placeholderRequests: string[] = [];
+  const failedImages: string[] = [];
   page.on("request", (requestEvent) => { if (new URL(requestEvent.url()).hostname === "placehold.co") placeholderRequests.push(requestEvent.url()); });
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "image" && response.status() >= 400) failedImages.push(response.url());
+  });
   await page.goto("/recipes");
-  const placeholders = page.locator('[role="img"][aria-label$="，示意图"]');
-  await expect(placeholders).toHaveCount(30);
-  await page.locator(`a[href="/recipes/${builtins[0]!.id}"]`).click();
-  await expect(page.getByRole("img", { name: `${builtins[0]!.name}，示意图` }).first()).toBeVisible();
+  for (const recipe of builtins) {
+    const card = page.locator(`a[href="/recipes/${recipe.id}"]`);
+    await expect(card.getByRole("img", { name: `${recipe.name}，示意图` })).toBeVisible();
+  }
+  for (const id of ["seed-recipe-31", "seed-recipe-41", "seed-recipe-47"]) {
+    const recipe = builtins.find((item) => item.id === id)!;
+    await page.goto(`/recipes/${id}`);
+    await expect(page.getByRole("img", { name: `${recipe.name}，示意图` }).first()).toBeVisible();
+  }
   expect(placeholderRequests).toEqual([]);
+  expect(failedImages).toEqual([]);
 });

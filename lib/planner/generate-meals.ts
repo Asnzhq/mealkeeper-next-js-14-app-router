@@ -14,7 +14,7 @@ const normalized = (value: string) => value.trim().toLocaleLowerCase();
 const mealLabel = (mealType: MealType) => mealType === "lunch" ? zhCN.mealLunch : mealType === "dinner" ? zhCN.mealDinner : zhCN.mealBreakfast;
 
 type HardFailure = { kind: "avoid" | "allergy" | "ingredient" | "unit"; ingredient?: string; unit?: string; recipe: string };
-type ConstraintKey = "meal_type" | "avoid" | "allergy" | "ingredient_exists" | "unit_convertible" | RelaxedConstraint;
+type ConstraintKey = "meal_type" | "exclude_recipe_ids" | "exclude_fingerprints" | "avoid" | "allergy" | "ingredient_exists" | "unit_convertible" | RelaxedConstraint;
 type MealOption = { recipes: PlannerRecipe[]; feasibility: number; score: number };
 
 export function classifyRecipe(recipe: PlannerRecipe): DishType {
@@ -108,20 +108,62 @@ export function findRecipeGaps(recipe: PlannerRecipe, inventory: InventoryStock[
   return gaps;
 }
 
-export function scoreRecipeCandidate(recipe: PlannerRecipe, inventory: InventoryStock[], preferences: UserPreferences | undefined, targetDate: Date, servings = 1) {
+export function recipeSetFingerprint(names: readonly string[]): string {
+  return JSON.stringify([...new Set(names.map((name) => name.trim().normalize("NFC")))].sort());
+}
+
+function diversityWeight(diversity: number | undefined): number {
+  return diversity !== undefined && Number.isFinite(diversity) ? Math.min(1, Math.max(0, diversity)) : 0.3;
+}
+
+function recipeNoise(recipeId: string, randomSeed: number): number {
+  let hash = 2166136261;
+  for (const character of `${randomSeed}:${recipeId}`) {
+    hash = Math.imul(hash ^ character.codePointAt(0)!, 16777619);
+  }
+  // Mix adjacent seeds and similarly named recipe IDs before converting to [0, 1).
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 2 ** 32;
+}
+
+function expiringIngredients(recipe: PlannerRecipe, inventory: InventoryStock[], date: Date): string[] {
+  return recipe.ingredients.filter((need) => matchingInventory(need, inventory).some((stock) =>
+    stock.quantity > 0 && unitsConvertible(need.unit, stock.unit) && expiryWithinThreeDays(stock, date)
+  )).map((need) => need.name);
+}
+
+export function mealRecommendation(recipes: PlannerRecipe[], input: GenerateMealsInput): string {
+  const date = new Date(input.targetDate);
+  const expiring = [...new Set(recipes.flatMap((recipe) => expiringIngredients(recipe, input.inventory, date)))];
+  if (expiring.length) return zhCN.plannerReasonExpiring.replace("{ingredients}", expiring.join("、"));
+  const recent = new Set(input.recentRecipeIds ?? []);
+  if (recipes.every((recipe) => !recent.has(recipe.id))) return zhCN.plannerReasonNew;
+  const usage = new Map<string, { need: RecipeIngredient; amount: number }>();
+  for (const recipe of recipes) {
+    for (const need of scaleRecipe(recipe, input.servings ?? 1).scaled_ingredients) {
+      const required = baseAmount(need.quantity, need.unit);
+      if (!required) continue;
+      const key = JSON.stringify([need.ingredient_id ?? normalized(need.name), required.dimension]);
+      usage.set(key, { need, amount: (usage.get(key)?.amount ?? 0) + required.amount });
+    }
+  }
+  if ([...usage.values()].every(({ need, amount }) => availableFor(need, input.inventory) + 1e-9 >= amount)) return zhCN.inventoryEnough;
+  return zhCN.plannerReasonExploration.replace("{diversity}", `${Math.round(diversityWeight(input.diversity) * 100)}%`);
+}
+
+export function scoreRecipeCandidate(recipe: PlannerRecipe, inventory: InventoryStock[], preferences: UserPreferences | undefined, targetDate: Date, servings = 1, randomSeed = 0, diversity?: number) {
   const feasibility = feasibilityFor(recipe, inventory, servings);
-  const reasons: string[] = [];
-  let score = feasibility;
-  if (recipe.ingredients.some((need) => matchingInventory(need, inventory).some((stock) => expiryWithinThreeDays(stock, targetDate)))) { score += 0.3; reasons.push("临期食材优先"); }
-  if (feasibility >= 0.999 && recipe.ingredients.length > 0) reasons.push("库存刚好够");
-  if (preferences?.tastes?.some((taste) => recipe.tags.some((tag) => tag.includes(taste)))) { score += 0.05; reasons.push("符合口味偏好"); }
+  let score = feasibility + recipeNoise(recipe.id, randomSeed) * diversityWeight(diversity);
+  if (expiringIngredients(recipe, inventory, targetDate).length) score += 0.3;
+  if (preferences?.tastes?.some((taste) => recipe.tags.some((tag) => tag.includes(taste)))) score += 0.05;
   if (preferences?.vegetarian && classifyRecipe(recipe) === "meat") score -= 0.25;
   if (preferences?.availableCookware?.length && recipe.cookware_required?.some((tool) => !preferences.availableCookware?.includes(tool))) score -= 0.2;
   if (preferences?.budget && preferences.budget > 0) {
     const estimated = estimateRecipeCost(recipe, inventory, servings);
     score -= Math.min(1, estimated / (preferences.budget / 3)) * 0.2;
   }
-  return { score, feasibility, reasons };
+  return { score, feasibility };
 }
 
 function matchingTerm(ingredients: RecipeIngredient[], terms: string[]): string | undefined {
@@ -199,10 +241,6 @@ function optionFeasibility(recipes: PlannerRecipe[], input: GenerateMealsInput):
   }
   return requiredTotal > 0 ? suppliedTotal / requiredTotal : 0;
 }
-function optionScore(recipes: PlannerRecipe[], input: GenerateMealsInput, targetDate: Date): number {
-  const servings = input.servings ?? 1;
-  return recipes.reduce((sum, recipe) => sum + scoreRecipeCandidate(recipe, input.inventory, input.preferences, targetDate, servings).score, 0);
-}
 function buildCompositionOptions(candidates: PlannerRecipe[], composition: DishType[]): MealOption[] {
   if (composition.length === 0 || composition.some((type) => !candidates.some((recipe) => classifyRecipe(recipe) === type))) return [];
   const byType = new Map<DishType, PlannerRecipe[]>();
@@ -223,9 +261,13 @@ function buildCompositionOptions(candidates: PlannerRecipe[], composition: DishT
   walk(0, []);
   return options;
 }
-function makeOptions(candidates: PlannerRecipe[], composition: DishType[], input: GenerateMealsInput, targetDate: Date): MealOption[] {
+function makeOptions(candidates: PlannerRecipe[], composition: DishType[], input: GenerateMealsInput, scores: Map<string, number>): MealOption[] {
   const base = composition.length ? buildCompositionOptions(candidates, composition) : candidates.map((recipe) => ({ recipes: [recipe], feasibility: 0, score: 0 }));
-  return base.map((option) => ({ ...option, feasibility: optionFeasibility(option.recipes, input), score: optionScore(option.recipes, input, targetDate) }));
+  return base.map((option) => ({
+    ...option,
+    feasibility: optionFeasibility(option.recipes, input),
+    score: option.recipes.reduce((sum, recipe) => sum + (scores.get(recipe.id) ?? 0), 0),
+  }));
 }
 function applySoftConstraint(options: MealOption[], constraint: Exclude<RelaxedConstraint, "meal_composition">, input: GenerateMealsInput): MealOption[] {
   const preferences = input.preferences ?? {};
@@ -263,17 +305,19 @@ export function createPlan(recipe: PlannerRecipe, input: GenerateMealsInput, mea
   const targetDate = new Date(input.targetDate);
   const servings = input.servings ?? 1;
   const scaled = scaleRecipe(recipe, servings);
-  const score = scoreRecipeCandidate(recipe, input.inventory, input.preferences, targetDate, servings);
-  return { id: `${targetDate.toISOString().slice(0, 10)}-${mealType}-${recipe.id}`, date: targetDate.toISOString(), meal_type: mealType, recipe_id: recipe.id, servings, status: "planned", planned_at: targetDate.toISOString(), recipe: scaled, shoppingGaps: findRecipeGaps(recipe, input.inventory, servings), feasibility: score.feasibility, recommendationReasons: score.reasons };
+  return { id: `${targetDate.toISOString().slice(0, 10)}-${mealType}-${recipe.id}`, date: targetDate.toISOString(), meal_type: mealType, recipe_id: recipe.id, servings, status: "planned", planned_at: targetDate.toISOString(), recipe: scaled, shoppingGaps: findRecipeGaps(recipe, input.inventory, servings), feasibility: feasibilityFor(recipe, input.inventory, servings), recommendationReasons: [mealRecommendation([recipe], input)] };
 }
 
 export function generateMeals(input: GenerateMealsInput): GenerateMealsResult {
   const startedAt = Date.now();
+  const seed = input.seed ?? startedAt;
+  const excludedIds = new Set(input.excludeRecipeIds);
+  const excludedFingerprints = new Set(input.excludeFingerprints);
   const targetDate = new Date(input.targetDate);
   const mealTypes = input.mealTypes ?? ["breakfast", "lunch", "dinner"];
   const filteredByConstraint: Partial<Record<ConstraintKey, number>> = { meal_type: input.recipes.length - input.recipes.filter((recipe) => mealTypes.includes(recipe.meal_type)).length };
   if (Number.isNaN(targetDate.getTime())) {
-    const result: GenerateMealsResult = { meals: [], shortages: [], relaxed: [], failureReason: zhCN.plannerInvalidDate, seed: input.seed ?? 0 };
+    const result: GenerateMealsResult = { meals: [], shortages: [], relaxed: [], failureReason: zhCN.plannerInvalidDate, seed };
     console.info("[planner]", { candidateTotal: input.recipes.length, filteredByConstraint, selected: 0, elapsedMs: Date.now() - startedAt });
     return result;
   }
@@ -283,12 +327,19 @@ export function generateMeals(input: GenerateMealsInput): GenerateMealsResult {
   const failures: string[] = [];
   const relaxedSet = new Set<RelaxedConstraint>();
   for (const mealType of mealTypes) {
-    const mealCandidates = input.recipes.filter((recipe) => recipe.meal_type === mealType);
+    const allCandidates = input.recipes.filter((recipe) => recipe.meal_type === mealType);
+    const mealCandidates = allCandidates.filter((recipe) => !excludedIds.has(recipe.id));
+    filteredByConstraint.exclude_recipe_ids = (filteredByConstraint.exclude_recipe_ids ?? 0) + allCandidates.length - mealCandidates.length;
+    const exhausted = zhCN.plannerExclusionsExhausted.replace("{meal}", mealLabel(mealType));
+    if (allCandidates.length && !mealCandidates.length) {
+      failures.push(exhausted);
+      continue;
+    }
     const avoid = (input.preferences?.avoid ?? []).filter((term) => normalized(term));
     const allergies = (input.preferences?.allergies ?? []).filter((term) => normalized(term));
     const hardFailures = mealCandidates.map((recipe) => hardFailure(recipe, input));
     let candidates = mealCandidates;
-    const hardStages: Array<[Exclude<ConstraintKey, RelaxedConstraint | "meal_type">, (recipe: PlannerRecipe) => boolean]> = [
+    const hardStages: Array<["avoid" | "allergy" | "ingredient_exists" | "unit_convertible", (recipe: PlannerRecipe) => boolean]> = [
       ["avoid", (recipe) => !matchingTerm(recipe.ingredients, avoid)],
       ["allergy", (recipe) => !matchingTerm(recipe.ingredients, allergies)],
       ["ingredient_exists", (recipe) => recipe.ingredients.length > 0 && recipe.ingredients.every((item) => item.name.trim() && Number.isFinite(item.quantity) && item.quantity > 0 && item.unit.trim())],
@@ -305,24 +356,32 @@ export function generateMeals(input: GenerateMealsInput): GenerateMealsResult {
     }
 
     const composition = requestedComposition[mealType] ?? [];
-    let options = makeOptions(candidates, composition, input, targetDate);
+    const scores = new Map(candidates.map((recipe) => [
+      recipe.id, scoreRecipeCandidate(recipe, input.inventory, input.preferences, targetDate, input.servings, seed, input.diversity).score,
+    ]));
+    const newOptions = (options: MealOption[]) => {
+      const remaining = options.filter(({ recipes }) => !excludedFingerprints.has(recipeSetFingerprint(recipes.map((recipe) => recipe.name))));
+      filteredByConstraint.exclude_fingerprints = (filteredByConstraint.exclude_fingerprints ?? 0) + options.length - remaining.length;
+      return remaining;
+    };
+    let options = makeOptions(candidates, composition, input, scores);
     const participating = new Set(options.flatMap((option) => option.recipes.map((recipe) => recipe.id)));
     if (composition.length) filteredByConstraint.meal_composition = (filteredByConstraint.meal_composition ?? 0) + candidates.filter((recipe) => !participating.has(recipe.id)).length;
-    let selection = selectClosest(options, input);
+    let selection = selectClosest(newOptions(options), input);
     for (const constraint of SOFT_FILTER_ORDER) filteredByConstraint[constraint] = (filteredByConstraint[constraint] ?? 0) + (selection.filtered[constraint] ?? 0);
     let chosen = selection.option;
     selection.relaxed.forEach((constraint) => relaxedSet.add(constraint));
 
     if (!chosen && composition.length > 0) {
-      options = makeOptions(candidates, [], input, targetDate);
-      selection = selectClosest(options, input);
+      options = makeOptions(candidates, [], input, scores);
+      selection = selectClosest(newOptions(options), input);
       for (const constraint of SOFT_FILTER_ORDER) filteredByConstraint[constraint] = (filteredByConstraint[constraint] ?? 0) + (selection.filtered[constraint] ?? 0);
       chosen = selection.option;
       selection.relaxed.forEach((constraint) => relaxedSet.add(constraint));
       if (chosen) relaxedSet.add("meal_composition");
     }
     if (!chosen) {
-      failures.push(hardFailureText(mealType, mealCandidates, hardFailures.filter((failure): failure is HardFailure => Boolean(failure))));
+      failures.push(exhausted);
       continue;
     }
     chosen.recipes.forEach((recipe) => meals.push(createPlan(recipe, input, mealType)));
@@ -330,7 +389,7 @@ export function generateMeals(input: GenerateMealsInput): GenerateMealsResult {
 
   const relaxed = RELAXATION_ORDER.filter((constraint) => relaxedSet.has(constraint));
   const shortages = meals.flatMap((meal) => meal.shoppingGaps.map((gap) => ({ ...gap, meal_type: meal.meal_type, recipe_id: meal.recipe_id, recipe_name: meal.recipe.name })));
-  const result: GenerateMealsResult = { meals, shortages, relaxed, failureReason: failures.length ? failures.join("；") : null, seed: input.seed ?? 0 };
+  const result: GenerateMealsResult = { meals, shortages, relaxed, failureReason: failures.length ? failures.join("；") : null, seed };
   console.info("[planner]", { candidateTotal: input.recipes.length, filteredByConstraint, selected: meals.length, selectedRecipeIds: meals.map((meal) => meal.recipe_id), elapsedMs: Date.now() - startedAt, seed: result.seed });
   return result;
 }
