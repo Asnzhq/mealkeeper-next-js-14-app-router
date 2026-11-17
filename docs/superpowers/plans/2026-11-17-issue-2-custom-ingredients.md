@@ -61,3 +61,5 @@
 - [x] Implement the API duplicate mode and field error response; bind errors to React Hook Form fields and prompt for merge/new before submission.
 - [x] Run `pnpm test`, `pnpm typecheck`, and `pnpm build`; run focused Playwright coverage for custom ingredient entry where the test environment supports it.
 - [x] Review the diff for scope and direct inventory writes; commit as `fix(issue-2): 支持自定义食材与安全合并`.
+
+**Post-commit E2E verification (2026-11-17):** `pnpm exec playwright test e2e/ingredients-custom.spec.ts --grep "手机视口"` passed (1/1), including the “仍新建” choice and two same-name rows. The missing locked SWC package was installed from the npm mirror; no manifest or lockfile changes were required.
