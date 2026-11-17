@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingredientSchema } from "@/server/schemas";
+import { ingredientSchema, recipeSchema } from "@/server/schemas";
 
 describe("ingredientSchema", () => {
   it("接受任意 1 到 30 字符名称、自定义分类和常见中式单位", () => {
@@ -17,5 +17,14 @@ describe("ingredientSchema", () => {
     expect(validCustomUnit.success).toBe(true);
     expect(invalidName.success).toBe(false);
     expect(invalidUnit.success).toBe(false);
+  });
+});
+
+describe("recipeSchema image_url", () => {
+  it("defaults an omitted cover to an empty string for placeholder rendering", () => {
+    const parsed = recipeSchema.safeParse({ name: "新菜", meal_type: "dinner", ingredients: [], steps: ["准备", "烹饪", "装盘"], duration_min: 20 });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.image_url).toBe("");
   });
 });

@@ -12,7 +12,7 @@ import { zhCN } from "@/lib/i18n/zh-CN";
 export const runtime = "nodejs";
 const ok = (data: unknown, message = "") => NextResponse.json({ code: 0, data, message });
 const fail = (message: string, code = 400) => NextResponse.json({ code, data: null, message }, { status: code });
-const placeholder = "/illustrations/recipe-placeholder.svg";
+const placeholder = "";
 
 function viewRecipe(source: PlannerRecipe, input: GenerateMealsInput, mealType: PlannerRecipe["meal_type"], stepDetails?: MealsOutput["meals"][number]["recipes"][number]["steps"], sourceType = "builtin", reviewStatus = "approved") {
   const plan = createPlan(source, input, mealType);

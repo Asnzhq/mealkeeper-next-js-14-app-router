@@ -1,36 +1,43 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, UtensilsCrossed, X } from "lucide-react";
 import { zhCN } from "@/lib/i18n/zh-CN";
+import { recipePlaceholderGradient } from "@/lib/recipes/placeholder-gradient";
 
-const gradients = [
-  "from-brand/90 via-brand/50 to-avocado/70",
-  "from-avocado/90 via-avocado/55 to-warning/60",
-  "from-warning/80 via-brand/45 to-avocado/65",
-  "from-brand/70 via-warning/55 to-muted",
-];
-function gradientFor(name: string): string {
-  const hash = [...name].reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  return gradients[hash % gradients.length] ?? gradients[0]!;
+export function RecipePlaceholder({ name, className = "" }: { name: string; className?: string }) {
+  const firstCharacter = Array.from(name.trim())[0] ?? "?";
+  const gradient = recipePlaceholderGradient(name);
+  return <div role="img" aria-label={`${name}，${zhCN.recipePlaceholderBadge}`} className={`relative isolate grid place-items-center overflow-hidden bg-muted ${className}`}>
+    <div aria-hidden="true" className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+    <div aria-hidden="true" className="relative flex flex-col items-center gap-3 text-center text-brand-foreground drop-shadow-sm">
+      <span className="text-5xl font-bold leading-none sm:text-6xl">{firstCharacter}</span>
+      <UtensilsCrossed size={30} strokeWidth={1.8} />
+    </div>
+    <span className="absolute bottom-3 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold text-foreground shadow-card">{zhCN.recipePlaceholderBadge}</span>
+  </div>;
 }
 
 export function RecipeVisual({ src, name, className = "" }: { src?: string | null; name: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const showImage = Boolean(src) && !failed;
+  const showImage = Boolean(src?.trim()) && !failed;
+
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [src]);
+
+  if (!showImage) return <RecipePlaceholder name={name} className={className} />;
   return <div className={`relative isolate overflow-hidden bg-muted ${className}`}>
-    {showImage && <>
-      {!loaded && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-muted" />}
-      <Image unoptimized={src?.startsWith("http") ?? false} loading="lazy" src={src!} alt={name} fill sizes="(max-width: 768px) 100vw, 900px" className={`object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
-    </>}
-    {!showImage && <div className={`absolute inset-0 grid place-items-center bg-gradient-to-br ${gradientFor(name)}`}><div className="rounded-full border border-white/35 bg-surface/35 px-8 py-5 text-center text-4xl font-bold text-white shadow-soft backdrop-blur-sm">{name.slice(0, 1)}</div></div>}
+    {!loaded && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-muted" />}
+    <Image width={1200} height={800} unoptimized={src?.startsWith("http") ?? false} loading="lazy" src={src!} alt={name} sizes="(max-width: 768px) 100vw, 900px" className={`h-full w-full object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
   </div>;
 }
 
-export interface GalleryImage { src?: string | null; alt: string }
+export interface GalleryImage { src?: string | null; alt: string; placeholderName?: string }
 export function ImageLightbox({ images, activeIndex, onChange, onClose }: { images: GalleryImage[]; activeIndex: number; onChange: (index: number) => void; onClose: () => void }) {
   const [scale, setScale] = useState(1);
   const [failed, setFailed] = useState(false);
@@ -59,8 +66,8 @@ export function ImageLightbox({ images, activeIndex, onChange, onClose }: { imag
     <button type="button" onClick={onClose} aria-label={zhCN.close} className="absolute right-4 top-4 z-10 rounded-full bg-surface/15 p-3 text-background"><X size={24} /></button>
     {images.length > 1 && <button type="button" aria-label={zhCN.previousImage} onClick={(event) => { event.stopPropagation(); previous(); }} className="absolute left-2 z-10 rounded-full bg-surface/15 p-3 text-background sm:left-6"><ChevronLeft size={28} /></button>}
     <div className="relative h-[82dvh] w-full max-w-6xl overflow-hidden" onClick={(event) => event.stopPropagation()} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-      {!loaded && !failed && <div className="absolute inset-0 animate-pulse bg-muted/30" aria-label={zhCN.loadingRecipeImage} />}
-      {failed ? <div className="absolute inset-0"><RecipeVisual name={image.alt} className="h-full w-full" /></div> : <Image unoptimized={image.src?.startsWith("http") ?? false} loading="lazy" src={image.src || "/illustrations/recipe-placeholder.svg"} alt={image.alt} fill sizes="100vw" className="object-contain transition-transform duration-150" style={{ transform: `scale(${scale})`, touchAction: "none" }} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+      {!loaded && !failed && image.src && <div className="absolute inset-0 animate-pulse bg-muted/30" aria-label={zhCN.loadingRecipeImage} />}
+      {!image.src || failed ? <RecipePlaceholder name={image.placeholderName ?? image.alt} className="h-full w-full" /> : <Image width={1600} height={1200} unoptimized={image.src.startsWith("http")} loading="lazy" src={image.src} alt={image.alt} sizes="100vw" className="h-full w-full object-contain transition-transform duration-150" style={{ transform: `scale(${scale})`, touchAction: "none" }} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
     </div>
     <div onClick={(event) => event.stopPropagation()} className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-5 rounded-full bg-surface/15 px-4 py-2"><button type="button" aria-label={zhCN.zoomOut} onClick={() => setScale((value) => Math.max(1, value - 0.25))} className="p-2"><Minus size={18} /></button><span className="min-w-12 text-center text-sm tabular-nums">{Math.round(scale * 100)}%</span><button type="button" aria-label={zhCN.zoomIn} onClick={() => setScale((value) => Math.min(4, value + 0.25))} className="p-2"><Plus size={18} /></button>{images.length > 1 && <><span className="text-sm tabular-nums">{activeIndex + 1} / {images.length}</span><button type="button" aria-label={zhCN.nextImage} onClick={(event) => { event.stopPropagation(); next(); }} className="p-2"><ChevronRight size={20} /></button></>}</div>
   </motion.div></AnimatePresence>;

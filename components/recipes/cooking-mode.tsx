@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Clock3, Mic, Pause, Play, RotateCcw, X } from "lucide-react";
 import { zhCN } from "@/lib/i18n/zh-CN";
@@ -22,7 +21,7 @@ function formatTime(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function CookingMode({ name, imageUrl, steps, onExit }: { name: string; imageUrl?: string | null; steps: CookingStep[]; onExit: () => void }) {
+export function CookingMode({ name, steps, onExit }: { name: string; steps: CookingStep[]; onExit: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -35,7 +34,7 @@ export function CookingMode({ name, imageUrl, steps, onExit }: { name: string; i
   const recognition = useRef<RecognitionLike | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
   const currentStep = steps[stepIndex];
-  const images: GalleryImage[] = steps.map((step, index) => ({ src: step.image_url || imageUrl, alt: `${name}，${zhCN.stepLabel}${index + 1}` }));
+  const images: GalleryImage[] = steps.map((step, index) => ({ src: step.image_url, alt: `${name}，${zhCN.stepLabel}${index + 1}`, placeholderName: name }));
 
   const previous = useCallback(() => setStepIndex((index) => Math.max(0, index - 1)), []);
   const next = useCallback(() => setStepIndex((index) => Math.min(steps.length - 1, index + 1)), [steps.length]);
@@ -120,7 +119,7 @@ export function CookingMode({ name, imageUrl, steps, onExit }: { name: string; i
     <header className="flex shrink-0 items-center gap-4 border-b border-border px-4 py-3 sm:px-7"><button type="button" onClick={exit} aria-label={zhCN.exitCooking} className="rounded-xl bg-muted p-3"><X size={24} /></button><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><h1 className="truncate text-lg font-bold sm:text-xl">{name}</h1><span className="shrink-0 font-mono text-lg font-semibold tabular-nums sm:text-xl">{stepIndex + 1} / {steps.length}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} /></div></div></header>
     <p className="shrink-0 px-4 pt-2 text-center text-xs text-muted-foreground landscape:hidden">{zhCN.rotateHint}</p>
     <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 p-3 sm:p-5 landscape:grid-cols-2 landscape:grid-rows-1 landscape:gap-6 landscape:px-8 landscape:py-4">
-      <button type="button" onClick={() => setLightboxOpen(true)} aria-label={zhCN.enlargeStepImage} className="relative min-h-36 overflow-hidden rounded-2xl bg-muted text-left landscape:h-full"><RecipeVisual src={currentStep.image_url || imageUrl} name={name} className="h-full w-full" /><div className="absolute bottom-3 right-3 rounded-full bg-foreground/50 px-3 py-1 text-xs text-background">{zhCN.enlargeStepImage}</div></button>
+      <button type="button" onClick={() => setLightboxOpen(true)} aria-label={zhCN.enlargeStepImage} className="relative min-h-36 overflow-hidden rounded-2xl bg-muted text-left landscape:h-full"><RecipeVisual src={currentStep.image_url} name={name} className="h-full w-full" /><div className="absolute bottom-3 right-3 rounded-full bg-foreground/50 px-3 py-1 text-xs text-background">{zhCN.enlargeStepImage}</div></button>
       <section className="flex min-h-0 flex-col justify-center overflow-y-auto px-2 py-1 landscape:px-1"><p className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand">{zhCN.stepLabel} {stepIndex + 1}</p><h2 className="text-3xl font-bold leading-relaxed sm:text-4xl lg:text-5xl">{currentStep.title}</h2><p className="mt-3 text-3xl leading-relaxed sm:text-4xl lg:text-5xl">{currentStep.instruction}</p>
         {secondsLeft > 0 && <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-muted px-4 py-3"><Clock3 size={24} className="text-brand" /><span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">{formatTime(secondsLeft)}</span><button type="button" onClick={() => setTimerRunning((running) => !running)} className="rounded-xl bg-surface px-4 py-2 text-base font-semibold">{timerRunning ? <Pause size={19} /> : <Play size={19} />}</button><button type="button" onClick={() => { setSecondsLeft(timerMinutes(currentStep) * 60); setTimerRunning(true); setTimerDone(false); }} aria-label={zhCN.restartTimer} className="rounded-xl bg-surface p-2"><RotateCcw size={19} /></button></div>}
         {timerDone && <p role="status" className="mt-4 rounded-xl bg-avocado/10 px-4 py-3 text-lg font-semibold text-avocado">{zhCN.timerFinished}</p>}

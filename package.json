@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm validate:recipe-assets && next build",
     "analyze": "node scripts/analyze.mjs",
     "check:pwa": "node scripts/pwa-smoke.mjs",
     "start": "next start",
@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "seed": "tsx prisma/seed.ts",
+    "validate:recipe-assets": "node prisma/validate-recipe-assets.mjs",
     "db:migrate": "prisma migrate dev",
     "db:prepare-postgres": "node scripts/prepare-postgres.mjs"
   },
