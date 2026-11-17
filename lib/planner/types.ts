@@ -47,6 +47,12 @@ export interface ShoppingGap {
   quantity: number;
   unit: StorageUnit;
 }
+export type RelaxedConstraint = "calorie_range" | "cooking_duration" | "recent_recipe_dedup" | "inventory_satisfaction" | "meal_composition";
+export interface Shortage extends ShoppingGap {
+  meal_type: MealType;
+  recipe_id: string;
+  recipe_name: string;
+}
 export interface ScaledRecipe extends PlannerRecipe {
   scaled_ingredients: RecipeIngredient[];
   scaled_calories: number;
@@ -73,4 +79,14 @@ export interface GenerateMealsInput {
   servings?: number;
   recentRecipeIds?: string[];
   requiredComposition?: Partial<Record<MealType, DishType[]>>;
+  inventorySatisfactionThreshold?: number;
+  /** Deterministic pass-through metadata; it does not affect candidate scoring. */
+  seed?: number;
+}
+export interface GenerateMealsResult {
+  meals: Plan[];
+  shortages: Shortage[];
+  relaxed: RelaxedConstraint[];
+  failureReason: string | null;
+  seed: number;
 }

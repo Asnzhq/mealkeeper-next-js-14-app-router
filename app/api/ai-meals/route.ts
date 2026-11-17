@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import { createPlan, generateMeals } from "@/lib/planner/generate-meals";
-import type { GenerateMealsInput, PlannerRecipe } from "@/lib/planner/types";
+import type { GenerateMealsInput, GenerateMealsResult, PlannerRecipe } from "@/lib/planner/types";
 import { generateWithFallback } from "@/server/llm/planner";
 import { PlannerInputSchema } from "@/server/llm/input";
 import { validateAiMeals } from "@/server/llm/validate";
 import type { MealsOutput } from "@/server/llm/schema";
 import { currentUser } from "@/server/session";
+import { zhCN } from "@/lib/i18n/zh-CN";
 
 export const runtime = "nodejs";
 const ok = (data: unknown, message = "") => NextResponse.json({ code: 0, data, message });
@@ -56,13 +57,15 @@ export async function POST(request: Request) {
     };
     if (result.fallback || !result.meals) {
       await logUsage();
-      return ok({ plans: result.fallbackPlans ?? generateMeals(input), pendingRecipes: [], fallback: true }, result.message || "已使用本地方案");
+      const local = result.fallbackPlans ?? generateMeals(input);
+      return ok({ ...local, pendingRecipes: [], fallback: true }, result.message || zhCN.usedLocalPlan);
     }
     const validationMessage = validateAiMeals(result.meals, input);
     if (validationMessage) {
       result.usage.status = "failure";
       await logUsage();
-      return ok({ plans: generateMeals(input), pendingRecipes: [], fallback: true }, "已使用本地方案");
+      const local = generateMeals(input);
+      return ok({ ...local, pendingRecipes: [], fallback: true }, zhCN.usedLocalPlan);
     }
     const plans = [];
     const pendingRecipes = [];
@@ -75,7 +78,8 @@ export async function POST(request: Request) {
       }
     }
     await logUsage();
-    return ok({ plans, pendingRecipes, fallback: false }, "AI 排餐已完成");
+    const generated: GenerateMealsResult = { meals: plans, shortages: plans.flatMap((plan) => plan.shoppingGaps.map((gap) => ({ ...gap, meal_type: plan.meal_type, recipe_id: plan.recipe_id, recipe_name: plan.recipe.name }))), relaxed: [], failureReason: null, seed: input.seed ?? 0 };
+    return ok({ ...generated, pendingRecipes, fallback: false }, zhCN.planReady);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "排餐请求失败", 500);
   }

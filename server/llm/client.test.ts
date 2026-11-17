@@ -28,7 +28,7 @@ describe("server-side structured meal generation", () => {
     const result = await generateWithFallback(input, fetcher);
     expect(result.fallback).toBe(true);
     expect(result.message).toBe("已使用本地方案");
-    expect(result.fallbackPlans?.length).toBeGreaterThan(0);
+    expect(result.fallbackPlans?.meals.length).toBeGreaterThan(0);
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
@@ -39,6 +39,16 @@ describe("server-side structured meal generation", () => {
     expect(result.fallback).toBe(true);
     expect(result.message).toBe("已使用本地方案");
     expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("preserves shortages, relaxations, reason and seed in the local fallback result", async () => {
+    vi.stubEnv("AI_API_KEY", ""); vi.stubEnv("AI_BASE_URL", "https://mock.invalid/v1"); vi.stubEnv("AI_MODEL", "mock-model");
+    const fetcher = vi.fn() as unknown as Fetcher;
+    const result = await generateWithFallback({ ...input, inventory: [], seed: 44 }, fetcher);
+    expect(result.message).toBe("已使用本地方案");
+    expect(result.fallbackPlans?.meals).toHaveLength(1);
+    expect(result.fallbackPlans?.shortages.map((item) => item.name)).toContain("鸡蛋");
+    expect(result.fallbackPlans?.relaxed).toContain("inventory_satisfaction");
+    expect(result.fallbackPlans?.seed).toBe(44);
   });
   it("keeps user-provided data out of the system prompt and serializes a field whitelist", () => {
     expect(buildSystemPrompt()).not.toContain("忽略系统提示");

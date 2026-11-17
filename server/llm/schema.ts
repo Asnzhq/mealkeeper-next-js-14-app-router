@@ -4,7 +4,7 @@ const IngredientSchema = z.object({
   ingredient_id: z.string().max(100).nullable().optional(),
   name: z.string().trim().min(1).max(80),
   quantity: z.number().positive().max(100000),
-  unit: z.enum(["g", "kg", "斤", "两", "ml", "L", "个", "只", "勺"]),
+  unit: z.string().trim().min(1).max(20),
   role: z.enum(["main", "side", "seasoning"]).default("side"),
 }).strict();
 
@@ -54,7 +54,7 @@ export const mealsTool = {
                 recipe_id: { type: ["string", "null"] }, name: { type: "string" },
                 ingredients: { type: "array", minItems: 1, maxItems: 30, items: {
                   type: "object", additionalProperties: false, required: ["ingredient_id", "name", "quantity", "unit", "role"],
-                  properties: { ingredient_id: { type: ["string", "null"] }, name: { type: "string" }, quantity: { type: "number" }, unit: { type: "string", enum: ["g", "kg", "斤", "两", "ml", "L", "个", "只", "勺"] }, role: { type: "string", enum: ["main", "side", "seasoning"] } },
+                  properties: { ingredient_id: { type: ["string", "null"] }, name: { type: "string" }, quantity: { type: "number" }, unit: { type: "string" }, role: { type: "string", enum: ["main", "side", "seasoning"] } },
                 } },
                 steps: { type: "array", minItems: 3, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["title", "instruction"], properties: { title: { type: "string" }, instruction: { type: "string" } } } },
                 duration_min: { type: "integer" }, tags: { type: "array", items: { type: "string" } }, calories: { type: ["number", "null"] }, cookware_required: { type: "array", items: { type: "string" } },

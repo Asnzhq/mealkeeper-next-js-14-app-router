@@ -7,8 +7,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, Reorder, motion } from "framer-motion";
 import { Check, Clock3, ChevronDown, ChevronUp, RefreshCw, Settings2, ShoppingBasket, Sparkles, UtensilsCrossed, X } from "lucide-react";
 import { zhCN } from "@/lib/i18n/zh-CN";
-import { classifyRecipe, createPlan, generateMeals, scoreRecipeCandidate } from "@/lib/planner";
-import type { GenerateMealsInput, InventoryStock, MealType, Plan, PlannerRecipe, UserPreferences } from "@/lib/planner";
+import { classifyRecipe, createPlan, generateMeals, isPlannerRecipeHardConstraintSafe, scoreRecipeCandidate } from "@/lib/planner";
+import type { GenerateMealsInput, GenerateMealsResult, InventoryStock, MealType, Plan, PlannerRecipe, RelaxedConstraint, ShoppingGap, UserPreferences } from "@/lib/planner";
 import { CompletionDialog, type CompletionSubmission } from "@/components/planner/completion-dialog";
 import { UNIT_BASE } from "@/lib/units";
 
@@ -21,6 +21,7 @@ const mealLabels: Record<MealType, string> = { breakfast: zhCN.breakfast, lunch:
 const dishLabels = { meat: zhCN.meatDish, vegetable: zhCN.vegetableDish, staple: zhCN.stapleDish, other: zhCN.recipes } as const;
 const cookwareOptions = [{ value: "炒锅", label: zhCN.cookwarePan }, { value: "蒸锅", label: zhCN.cookwareSteamer }, { value: "烤箱", label: zhCN.cookwareOven }, { value: "电饭煲", label: zhCN.cookwareRiceCooker }];
 const initialPreferences: UserPreferences = { calorieTarget: 700, maxCookingMinutes: 90, availableCookware: [] };
+const relaxedLabels: Record<RelaxedConstraint, string> = { calorie_range: zhCN.plannerRelaxedCalories, cooking_duration: zhCN.plannerRelaxedDuration, recent_recipe_dedup: zhCN.plannerRelaxedDedup, inventory_satisfaction: zhCN.plannerRelaxedInventory, meal_composition: zhCN.plannerRelaxedComposition };
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const safeArray = <T,>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 
@@ -95,6 +96,7 @@ export function TodayPlanner() {
   const [preferences, setPreferences] = useState<UserPreferences>(initialPreferences);
   const [servings, setServings] = useState(2);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [generationResult, setGenerationResult] = useState<GenerateMealsResult | null>(null);
   const [order, setOrder] = useState<MealType[]>(["breakfast", "lunch", "dinner"]);
   const [details, setDetails] = useState<string[]>([]);
   const [swapMeal, setSwapMeal] = useState<MealType | null>(null);
@@ -123,7 +125,7 @@ export function TodayPlanner() {
     setPreferences(mapped);
     if (!appliedPreferenceUpdate.current && typeof window !== "undefined" && localStorage.getItem("mealkeeper-preferences-updated") === "1" && recipes.isSuccess && ingredients.isSuccess) {
       appliedPreferenceUpdate.current = true; localStorage.removeItem("mealkeeper-preferences-updated"); setIsGenerating(true);
-      void (async () => { try { await fetch(`/api/plans?date=${todayKey()}`, { method: "DELETE" }); const generated = generateMeals({ recipes: rows, inventory: stock, preferences: mapped, targetDate: todayKey(), servings }); setPlans(await persistPlans(generated)); setSelectedDate(todayKey()); setViewWeek(false); setNotice(zhCN.preferencesUpdated); } catch { setNotice(zhCN.loadError); } finally { setIsGenerating(false); } })();
+      void (async () => { try { await fetch(`/api/plans?date=${todayKey()}`, { method: "DELETE" }); const generated = generateMeals({ recipes: rows, inventory: stock, preferences: mapped, targetDate: todayKey(), servings }); setGenerationResult(generated); setPlans(await persistPlans(generated.meals)); setSelectedDate(todayKey()); setViewWeek(false); setNotice(zhCN.preferencesUpdated); } catch { setNotice(zhCN.loadError); } finally { setIsGenerating(false); } })();
     }
   }, [savedPreferences.data, recipes.isSuccess, ingredients.isSuccess, rows, stock, servings]);
 
@@ -132,11 +134,11 @@ export function TodayPlanner() {
     setIsGenerating(true); setNotice(""); setPendingAiRecipes(null);
     try {
       const response = await fetch("/api/ai-meals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(generationInput(todayKey())) });
-      const result = await response.json() as ApiResponse<{ plans: Plan[]; pendingRecipes: PendingAiRecipe[]; fallback: boolean }>;
+      const result = await response.json() as ApiResponse<GenerateMealsResult & { pendingRecipes: PendingAiRecipe[]; fallback: boolean }>;
       if (!response.ok || result.code >= 400) throw new Error(result.message);
-      setPlans(await persistPlans(result.data.plans)); setPendingAiRecipes([...new Map([...(pendingRecipes.data ?? []), ...result.data.pendingRecipes].map((recipe) => [recipe.id, recipe])).values()]); void queryClient.invalidateQueries({ queryKey: ["planner", "pending-ai-recipes"] }); setViewWeek(false); setSelectedDate(todayKey()); setNotice(result.data.fallback ? (result.message || zhCN.usedLocalPlan) : zhCN.planReady);
+      setGenerationResult(result.data); setPlans(await persistPlans(result.data.meals)); setPendingAiRecipes([...new Map([...(pendingRecipes.data ?? []), ...result.data.pendingRecipes].map((recipe) => [recipe.id, recipe])).values()]); void queryClient.invalidateQueries({ queryKey: ["planner", "pending-ai-recipes"] }); setViewWeek(false); setSelectedDate(todayKey()); setNotice(result.data.fallback ? (result.message || zhCN.usedLocalPlan) : zhCN.planReady);
     } catch {
-      setPlans(await persistPlans(generateMeals(generationInput(todayKey())))); setViewWeek(false); setSelectedDate(todayKey()); setNotice(zhCN.usedLocalPlan);
+      const generated = generateMeals(generationInput(todayKey())); setGenerationResult(generated); setPlans(await persistPlans(generated.meals)); setViewWeek(false); setSelectedDate(todayKey()); setNotice(zhCN.usedLocalPlan);
     } finally { setIsGenerating(false); void queryClient.invalidateQueries({ queryKey: ["planner", "ai-usage"] }); }
   };
 
@@ -155,15 +157,15 @@ export function TodayPlanner() {
     setIsGenerating(true); setNotice("");
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 350));
-      if (!week) { setPlans(await persistPlans(generateMeals(generationInput(todayKey())))); setSelectedDate(todayKey()); setViewWeek(false); }
+      if (!week) { const generated = generateMeals(generationInput(todayKey())); setGenerationResult(generated); setPlans(await persistPlans(generated.meals)); setSelectedDate(todayKey()); setViewWeek(false); }
       else {
-        const generated: Plan[] = []; const used: string[] = [...(recentPlans.data ?? [])];
+        const generated: Plan[] = []; const used: string[] = [...(recentPlans.data ?? [])]; const dayResults: GenerateMealsResult[] = [];
         for (let offset = 0; offset < 7; offset += 1) {
           const date = new Date(); date.setDate(date.getDate() + offset);
-          const dayPlans = generateMeals(generationInput(date.toISOString().slice(0, 10), used));
-          generated.push(...dayPlans); used.push(...dayPlans.map((plan) => plan.recipe_id));
+          const result = generateMeals(generationInput(date.toISOString().slice(0, 10), used)); dayResults.push(result);
+          generated.push(...result.meals); used.push(...result.meals.map((plan) => plan.recipe_id));
         }
-        setPlans(await persistPlans(generated)); setSelectedDate(todayKey()); setViewWeek(true);
+        const latest = dayResults[0]; setGenerationResult(latest ? { ...latest, meals: generated, shortages: dayResults.flatMap((result) => result.shortages), relaxed: [...new Set(dayResults.flatMap((result) => result.relaxed))], failureReason: dayResults.map((result) => result.failureReason).find((reason) => reason !== null) ?? null } : null); setPlans(await persistPlans(generated)); setSelectedDate(todayKey()); setViewWeek(true);
       }
       setNotice(week ? zhCN.weekReady : zhCN.planReady);
     } catch (error) { setNotice(error instanceof Error ? error.message : zhCN.loadError); }
@@ -179,7 +181,8 @@ export function TodayPlanner() {
     const target = swapRecipeId ?? undefined;
     const targetRecipe = selected.find((row) => row.id === target) ?? selected[0];
     const targetDish = targetRecipe ? classifyRecipe(targetRecipe) : undefined;
-    return rows.filter((recipe) => { if (recipe.meal_type !== mealType || recipe.id === targetRecipe?.id || (targetDish && classifyRecipe(recipe) !== targetDish)) return false; if (plans.some((plan) => plan.recipe_id === recipe.id && plan.date.slice(0, 10) === activeDate)) return false; const remaining = current.filter((plan) => plan.recipe_id !== target); const mealInput = generationInput(activeDate); const set = [...remaining.map((plan) => plan.recipe), recipe]; const uniqueMains = set.flatMap((item) => item.ingredients.filter((ingredient) => ingredient.role === "main").map((ingredient) => ingredient.ingredient_id ?? ingredient.name.toLocaleLowerCase())); if (new Set(uniqueMains).size !== uniqueMains.length) return false; if ((preferences.maxCookingMinutes !== undefined && set.reduce((sum, item) => sum + item.duration_min, 0) > preferences.maxCookingMinutes) || (preferences.calorieTarget !== undefined && set.reduce((sum, item) => sum + (item.nutrition?.calories ?? 0), 0) / Math.max(1, servings) > preferences.calorieTarget * 1.15)) return false; return Boolean(mealInput); }).map((recipe) => ({ recipe, ...scoreRecipeCandidate(recipe, stock, preferences, new Date(activeDate), servings) })).sort((a, b) => b.score - a.score);
+    const mealInput = generationInput(activeDate);
+    return rows.filter((recipe) => { if (recipe.meal_type !== mealType || recipe.id === targetRecipe?.id || (targetDish && classifyRecipe(recipe) !== targetDish)) return false; if (plans.some((plan) => plan.recipe_id === recipe.id && plan.date.slice(0, 10) === activeDate)) return false; return isPlannerRecipeHardConstraintSafe(recipe, mealInput); }).map((recipe) => ({ recipe, ...scoreRecipeCandidate(recipe, stock, preferences, new Date(activeDate), servings) })).sort((a, b) => b.score - a.score);
   };
   const switchRecipe = async (oldId: string, replacement: PlannerRecipe, mealType: MealType) => {
     const input = generationInput(activeDate);
@@ -188,11 +191,15 @@ export function TodayPlanner() {
     if (fresh && current) { const [saved] = await persistPlans([fresh]); setPlans((items) => items.map((plan) => plan.id === current.id ? { ...saved, id: saved.id, servings: current.servings } : plan)); }
     setSwapMeal(null); setSwapRecipeId(null);
   };
-  const addGaps = async (selected: Plan[]) => {
-    const gaps = selected.flatMap((plan) => plan.shoppingGaps);
+  const addGaps = async (gaps: ShoppingGap[]) => {
     if (!gaps.length) { setNotice(zhCN.inventoryEnough); return; }
     const response = await Promise.all(gaps.map((gap) => fetch("/api/shopping-items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: gap.name, quantity: gap.quantity, unit: gap.unit, checked: false }) })));
     if (response.every((item) => item.ok)) setNotice(zhCN.shoppingAdded);
+  };
+  const addManualRecipe = async (recipe: PlannerRecipe, mealType: MealType) => {
+    const plan = createPlan(recipe, generationInput(activeDate), mealType);
+    const [saved] = await persistPlans([plan]);
+    setPlans((current) => [...current, saved]); setSwapMeal(null); setSwapRecipeId(null);
   };
 
   const completeSelection = async (submission: CompletionSubmission) => {
@@ -249,6 +256,9 @@ export function TodayPlanner() {
   return <main id="main-content" className="mx-auto max-w-7xl px-4 pb-28 pt-7 sm:px-8 lg:px-10 lg:pb-12">
     <header className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-sm font-medium text-muted-foreground">{new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date(`${activeDate}T12:00:00`))}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{zhCN.todayMenuTitle}</h1><p className="mt-2 text-muted-foreground">{zhCN.todayMenuSubtitle}</p></div><div className="flex w-full flex-wrap gap-2 sm:w-auto"><button type="button" onClick={() => void regenerate()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-semibold shadow-card sm:flex-none"><RefreshCw size={16} />{zhCN.regenerateToday}</button><button type="button" disabled={accountMode.data} title={accountMode.data ? zhCN.localModeAiDisabled : undefined} onClick={() => void generateWithAi()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-card disabled:opacity-45 sm:flex-none"><Sparkles size={16} />{zhCN.aiGenerate}</button><button type="button" onClick={() => void regenerate(true)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-semibold shadow-card sm:flex-none"><Sparkles size={16} />{zhCN.generateWeek}</button><Link href="/settings" aria-label={zhCN.settings} className="rounded-2xl border border-border bg-surface p-3 shadow-card"><Settings2 size={19} /></Link></div></header>
     {accountMode.data && <p className="mb-4 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">{zhCN.localModeAiDisabled}</p>}{notice && <p role="status" className="mb-4 rounded-xl bg-avocado/10 px-4 py-3 text-sm font-medium text-avocado">{notice}</p>}
+    {generationResult?.relaxed.length ? <p role="status" className="mb-4 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-foreground">{zhCN.plannerRelaxedPrefix}{generationResult.relaxed.map((constraint) => relaxedLabels[constraint]).join("、")}</p> : null}
+    {generationResult?.shortages.length ? <section className="mb-4 rounded-2xl border border-brand/20 bg-brand/5 p-4"><p className="text-sm font-semibold">{zhCN.plannerRestockMessage}{generationResult.shortages.map((item) => `${item.name} ${item.quantity} ${item.unit}`).join("、")}</p><button type="button" onClick={() => void addGaps(generationResult.shortages)} className="mt-3 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">{zhCN.addGapsToShopping}</button></section> : null}
+    {generationResult?.failureReason && <section data-testid="planner-failure" role="alert" className="mb-5 rounded-3xl border border-brand/30 bg-brand/5 p-5"><h2 className="text-lg font-bold">{zhCN.plannerFailureTitle}</h2><p className="mt-2 text-sm text-muted-foreground">{generationResult.failureReason}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => void regenerate()} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white">{zhCN.plannerRelaxRetry}</button><Link href="/shopping" className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold">{zhCN.plannerGoShopping}</Link><button type="button" onClick={() => { setSwapMeal((meal) => meal ?? "lunch"); setSwapRecipeId(null); }} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold">{zhCN.plannerManualSelect}</button></div></section>}
     {(pendingAiRecipes ?? pendingRecipes.data ?? []).length > 0 && <section className="mb-5 rounded-3xl border border-brand/20 bg-brand/5 p-5"><h2 className="text-lg font-bold">{zhCN.pendingAiRecipes}</h2><div className="mt-3 grid gap-3 md:grid-cols-2">{(pendingAiRecipes ?? pendingRecipes.data ?? []).map((recipe) => <article key={recipe.id} className="rounded-2xl border border-border bg-surface p-4"><Image src="/illustrations/recipe-placeholder.svg" alt={recipe.name} width={640} height={420} className="mb-3 h-32 w-full rounded-xl object-cover" /><h3 className="font-semibold">{recipe.name}</h3><p className="mt-1 text-xs text-muted-foreground">{zhCN.awaitingReview}</p><ol className="mt-3 space-y-3">{recipe.steps.map((step, index) => <li key={`${recipe.id}-${index}`} className="rounded-xl bg-background p-3 text-sm"><strong>{step.title}</strong><p className="mt-1 text-muted-foreground">{step.instruction}</p>{step.image_url && <a href={step.image_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-brand">{zhCN.viewStepImage}</a>}<label className="mt-2 inline-flex cursor-pointer rounded-lg bg-muted px-3 py-2 text-xs font-semibold"><span>{zhCN.uploadStepImage}</span><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadStepImage(recipe.id, index, file); }} /></label></li>)}</ol><button type="button" onClick={() => void reviewAiRecipe(recipe.id, "approve")} className="mt-3 w-full rounded-xl bg-avocado px-4 py-2.5 text-sm font-semibold text-white">{zhCN.adoptRecipe}</button></article>)}</div></section>}
     {viewWeek && plans.length > 0 && <nav aria-label={zhCN.weeklyMenu} className="mb-4 flex gap-2 overflow-x-auto pb-2">{Array.from(new Set(plans.map((plan) => plan.date.slice(0, 10)))).map((date) => <button key={date} type="button" onClick={() => setSelectedDate(date)} aria-current={date === activeDate ? "date" : undefined} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${date === activeDate ? "bg-brand text-white" : "bg-surface text-foreground shadow-card"}`}>{new Intl.DateTimeFormat("zh-CN", { weekday: "short", month: "numeric", day: "numeric" }).format(new Date(`${date}T12:00:00`))}</button>)}</nav>}
     {plans.length === 0 ? <section className="rounded-3xl border border-border bg-surface px-6 py-14 text-center shadow-card"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-avocado/10 text-4xl" role="img" aria-label={zhCN.menuIllustrationAlt}>🥕</div><h2 className="mt-5 text-xl font-bold">{rows.length ? zhCN.emptyState : zhCN.noMenuRecipes}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{zhCN.todayMenuSubtitle}</p><button type="button" disabled={!rows.length} onClick={() => void regenerate()} className="mt-6 rounded-2xl bg-brand px-5 py-3 font-semibold text-white disabled:opacity-50">{zhCN.regenerateToday}</button></section> : <>
@@ -283,7 +293,7 @@ export function TodayPlanner() {
                     </section>
                   )) : <p className="rounded-2xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">{zhCN.noRecipesForMeal}</p>}
                 </div>
-                {group.some((plan) => plan.shoppingGaps.length > 0) && <button type="button" onClick={() => void addGaps(group)} className="mx-4 mb-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/10"><ShoppingBasket size={16} />{zhCN.addGapsToShopping}</button>}
+                {group.some((plan) => plan.shoppingGaps.length > 0) && <button type="button" onClick={() => void addGaps(group.flatMap((plan) => plan.shoppingGaps))} className="mx-4 mb-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/10"><ShoppingBasket size={16} />{zhCN.addGapsToShopping}</button>}
                 <div className="grid grid-cols-2 gap-2 px-4 pb-4"><button type="button" disabled={!pending.length} onClick={() => { setCompletionError(""); setCompletionPlans(pending); }} className="rounded-xl bg-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{zhCN.markMealDone}</button><button type="button" disabled={!pending.length} onClick={() => void skipMeal(pending)} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold disabled:opacity-40">{zhCN.skipMeal}</button></div>
               </motion.article>
             </Reorder.Item>
@@ -292,7 +302,7 @@ export function TodayPlanner() {
       </Reorder.Group>
     </>}
     {usage.data && <section className="mt-6 rounded-3xl border border-border bg-surface p-5 shadow-card"><h2 className="text-lg font-bold">{zhCN.aiCostTitle}</h2><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p className="text-xs text-muted-foreground">{zhCN.aiCalls}</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">{usage.data.calls}</p></div><div><p className="text-xs text-muted-foreground">{zhCN.aiTokens}</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">{usage.data.totalTokens}</p></div><div><p className="text-xs text-muted-foreground">{zhCN.aiAverageLatency}</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">{usage.data.averageDurationMs} {zhCN.millisecondsShort}</p></div><div><p className="text-xs text-muted-foreground">{zhCN.aiEstimatedCost}</p><p className="mt-1 font-mono text-xl font-semibold tabular-nums">{new Intl.NumberFormat("en-US", { style: "currency", currency: usage.data.currency }).format(usage.data.estimatedCost)}</p></div></div></section>}
-    {swapMeal && <div className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/35 sm:items-center sm:p-5" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSwapMeal(null); setSwapRecipeId(null); } }}><section role="dialog" aria-modal="true" aria-labelledby="swap-title" className="max-h-[82dvh] w-full overflow-y-auto rounded-t-3xl bg-background p-5 shadow-soft sm:max-w-xl sm:rounded-3xl"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{mealLabels[swapMeal]}</p><h2 id="swap-title" className="text-xl font-bold">{zhCN.swapDish}</h2></div><button type="button" aria-label={zhCN.close} onClick={() => { setSwapMeal(null); setSwapRecipeId(null); }} className="rounded-full p-2 hover:bg-muted"><X size={20} /></button></div><div className="mt-4 grid gap-3">{candidates(swapMeal).map(({ recipe, reasons }) => { const old = mealPlans(swapMeal).find((plan) => plan.recipe_id === swapRecipeId); return <button type="button" key={recipe.id} onClick={() => old && switchRecipe(old.recipe_id, recipe, swapMeal)} className="rounded-2xl border border-border bg-surface p-4 text-left hover:border-brand"><span className="font-semibold">{recipe.name}</span><span className="mt-2 block text-xs text-muted-foreground">{zhCN.whyRecommended}：{reasons.map((reason) => reason === "临期食材优先" ? zhCN.freshnessPriority : reason === "库存刚好够" ? zhCN.inventoryEnough : zhCN.tasteMatched).join(" · ") || zhCN.inventoryEnough}</span></button>; })}{candidates(swapMeal).length === 0 && <p className="rounded-2xl bg-muted p-5 text-center text-sm text-muted-foreground">{zhCN.noSwapCandidates}</p>}</div></section></div>}
+    {swapMeal && <div className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/35 sm:items-center sm:p-5" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSwapMeal(null); setSwapRecipeId(null); } }}><section role="dialog" aria-modal="true" aria-labelledby="swap-title" className="max-h-[82dvh] w-full overflow-y-auto rounded-t-3xl bg-background p-5 shadow-soft sm:max-w-xl sm:rounded-3xl"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{mealLabels[swapMeal]}</p><h2 id="swap-title" className="text-xl font-bold">{zhCN.swapDish}</h2></div><button type="button" aria-label={zhCN.close} onClick={() => { setSwapMeal(null); setSwapRecipeId(null); }} className="rounded-full p-2 hover:bg-muted"><X size={20} /></button></div><div className="mt-4 grid gap-3">{candidates(swapMeal).map(({ recipe, reasons }) => { const old = mealPlans(swapMeal).find((plan) => plan.recipe_id === swapRecipeId); return <button type="button" key={recipe.id} onClick={() => old ? void switchRecipe(old.recipe_id, recipe, swapMeal) : void addManualRecipe(recipe, swapMeal)} className="rounded-2xl border border-border bg-surface p-4 text-left hover:border-brand"><span className="font-semibold">{recipe.name}</span><span className="mt-2 block text-xs text-muted-foreground">{zhCN.whyRecommended}：{reasons.map((reason) => reason === "临期食材优先" ? zhCN.freshnessPriority : reason === "库存刚好够" ? zhCN.inventoryEnough : zhCN.tasteMatched).join(" · ") || zhCN.inventoryEnough}</span></button>; })}{candidates(swapMeal).length === 0 && <p className="rounded-2xl bg-muted p-5 text-center text-sm text-muted-foreground">{zhCN.noSwapCandidates}</p>}</div></section></div>}
     {completionPlans && <CompletionDialog plans={completionPlans} stock={ingredients.data ?? []} busy={completionBusy} shortageMessage={completionError} onClose={() => { if (!completionBusy) { setCompletionPlans(null); setCompletionError(""); } }} onConfirm={(submission) => void completeSelection(submission)} />}
   </main>;
 }
