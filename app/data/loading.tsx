@@ -1,0 +1,1 @@
+export default function DataLoading() { return <main className="mx-auto max-w-3xl animate-pulse px-4 py-10"><div className="h-8 w-48 rounded bg-muted"/><div className="mt-6 h-56 rounded-3xl bg-muted"/><div className="mt-4 h-36 rounded-3xl bg-muted"/></main>; }

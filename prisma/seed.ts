@@ -1,0 +1,11 @@
+import { PrismaClient } from "@prisma/client";
+const prisma=new PrismaClient();
+const names=["番茄炒蛋","红烧肉","宫保鸡丁","鱼香肉丝","青椒肉丝","麻婆豆腐","可乐鸡翅","糖醋排骨","土豆炖牛肉","蒜蓉西兰花","清蒸鲈鱼","扬州炒饭","蛋炒饭","紫菜蛋花汤","冬瓜排骨汤","家常豆腐","地三鲜","葱油拌面","红烧茄子","白灼虾","酸辣土豆丝","小炒黄牛肉","香菇滑鸡","咖喱鸡肉","排骨玉米汤","韭菜炒鸡蛋","蒜苔炒肉","西红柿牛腩","香煎三文鱼","虾仁滑蛋"];
+const mealTypes=["breakfast","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","breakfast","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner","lunch","dinner"];
+const dishTypes=["素菜","荤菜","荤菜","荤菜","荤菜","荤菜","荤菜","荤菜","荤菜","素菜","荤菜","主食","主食","素菜","荤菜","素菜","素菜","主食","素菜","荤菜","素菜","荤菜","荤菜","荤菜","荤菜","素菜","荤菜","荤菜","荤菜","荤菜"];
+const ingredientNames=[["鸡蛋","番茄","吐司"],["五花肉","生姜"],["鸡胸肉","花生","黄瓜"],["猪肉","木耳","胡萝卜"],["猪肉","青椒"],["豆腐","猪肉"],["鸡翅","可乐"],["排骨","冰糖"],["牛肉","土豆","胡萝卜"],["西兰花","大蒜"],["鲈鱼","生姜"],["大米","鸡蛋","虾仁"],["大米","鸡蛋"],["紫菜","鸡蛋"],["排骨","冬瓜"],["豆腐","香菇","青菜"],["茄子","土豆","青椒"],["面条","小葱"],["茄子","大蒜"],["虾","生姜"],["土豆","辣椒"],["牛肉","芹菜","辣椒"],["鸡肉","香菇"],["鸡肉","土豆","胡萝卜"],["排骨","玉米"],["韭菜","鸡蛋"],["猪肉","蒜苔"],["牛腩","番茄"],["三文鱼","西兰花"],["虾仁","鸡蛋"]];
+const quantities=[250,300,200,200,150,250,300,300,300,200,350,250,200,100,300,250,300,200,250,250,250,250,250,300,350,180,200,350,250,200];
+const steps=["准备食材，清洗后切配；肉类擦干并提前调味。","热锅加入少量油，先将主料煎炒至表面上色，再加入配料和调味汁。","小火焖煮或翻炒至熟透入味，调整咸淡后装盘。"];
+const tag=(name:string)=>dishTypes[names.indexOf(name)];
+async function main(){for(let index=0;index<names.length;index++){const name=names[index];const ingredients=ingredientNames[index].map((item,i)=>({name:item,quantity:i===0?quantities[index]:Math.max(40,Math.round(quantities[index]/(i+1))),unit:item.includes("蛋")?"个":item.includes("翅")?"只":item.includes("虾")?"只":item.includes("鱼")?"只":item.includes("米")?"g":item.includes("可乐")?"ml":"g",role:i===0?"main":"side"}));const recipe={name,meal_type:mealTypes[index],ingredients,steps,duration_min:18+(index%5)*5,tags:["中式","家常",tag(name)],nutrition:{calories:mealTypes[index]==="breakfast"?700:250+(index%6)*55},image_url:`https://placehold.co/640x420?text=${encodeURIComponent(name)}`};await prisma.recipe.upsert({where:{id:`seed-recipe-${index+1}`},update:recipe,create:{id:`seed-recipe-${index+1}`,...recipe}})}}
+main().finally(()=>prisma.$disconnect());

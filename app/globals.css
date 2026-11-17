@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 6 77% 61%;
+  --brand-foreground: 0 0% 100%;
+  --avocado: 91 29% 51%;
+  --avocado-foreground: 0 0% 100%;
+  --background: 36 43% 96%;
+  --foreground: 24 9% 18%;
+  --surface: 0 0% 100%;
+  --muted: 35 26% 93%;
+  --muted-foreground: 30 5% 45%;
+  --border: 34 23% 88%;
+  --warning: 32 95% 44%;
+  --warning-foreground: 32 95% 25%;
+  --danger: 0 72% 51%;
+}
+
+.dark {
+  --brand: 6 77% 65%;
+  --brand-foreground: 0 0% 100%;
+  --avocado: 91 34% 58%;
+  --avocado-foreground: 0 0% 10%;
+  --background: 24 12% 10%;
+  --foreground: 36 25% 94%;
+  --surface: 24 10% 14%;
+  --muted: 24 8% 20%;
+  --muted-foreground: 30 8% 67%;
+  --border: 24 8% 25%;
+  --warning: 35 90% 58%;
+  --warning-foreground: 35 100% 80%;
+  --danger: 0 72% 61%;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+
+
+
+.field { @apply h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20; }
+

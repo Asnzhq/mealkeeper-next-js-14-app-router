@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Recipe illustration placeholder</title>
+  <desc id="desc">A warm plate with simple vegetables</desc>
+  <rect width="640" height="420" rx="32" fill="#FAF7F2"/>
+  <circle cx="320" cy="210" r="142" fill="#fff" stroke="#E7DDD0" stroke-width="12"/>
+  <circle cx="320" cy="210" r="108" fill="#F6E7D8"/>
+  <path d="M250 230c22-66 93-88 140-48-8 70-60 105-124 88z" fill="#7FA65B"/>
+  <path d="M262 222c41-5 82-23 116-48" fill="none" stroke="#FAF7F2" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="365" cy="257" r="24" fill="#E85D4E"/><circle cx="290" cy="270" r="18" fill="#E85D4E"/>
+</svg>

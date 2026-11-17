@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String
+  email         String?         @unique
+  phone         String?         @unique
+  password_hash String?
+  family_id     String?
+  local_mode    Boolean         @default(false)
+  created_at    DateTime        @default(now())
+  family        Family?         @relation(fields: [family_id], references: [id], onDelete: SetNull)
+  inventory_logs InventoryLog[]
+  preferences   Preference[]
+  shopping_items ShoppingItem[]
+  push_subscriptions PushSubscription[]
+  inbox_messages InboxMessage[]
+}
+
+model Family {
+  id         String       @id @default(cuid())
+  name       String
+  invite_code String     @unique @default(cuid())
+  created_at DateTime     @default(now())
+  users      User[]
+  ingredients Ingredient[]
+  recipes    Recipe[]
+  plans      Plan[]
+  shopping_items ShoppingItem[]
+}
+
+model VerificationCode {
+  id         String   @id @default(cuid())
+  phone      String
+  code_hash  String
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime @default(now())
+
+  @@index([phone, created_at])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  user_id    String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model NotificationDispatch {
+  id          String   @id @default(cuid())
+  dedupe_key  String   @unique
+  created_at  DateTime @default(now())
+}
+
+model InboxMessage {
+  id         String   @id @default(cuid())
+  user_id    String
+  title      String
+  body       String
+  read_at    DateTime?
+  dedupe_key String?  @unique
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+}
+
+model Ingredient {
+  id             String          @id @default(cuid())
+  family_id      String?
+  name           String
+  category       String
+  unit           String
+  stock_qty      Float           @default(0)
+  safety_stock   Float           @default(0)
+  storage        String?
+  expiry_date    DateTime?
+  cost_per_unit  Float           @default(0)
+  tags           Json            @default("[]")
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  family         Family?         @relation(fields: [family_id], references: [id], onDelete: SetNull)
+  inventory_logs InventoryLog[]
+  shopping_items ShoppingItem[]
+
+  @@index([name])
+  @@index([expiry_date])
+}
+
+model InventoryLog {
+  id            String     @id @default(cuid())
+  ingredient_id String
+  delta         Float
+  reason        String
+  ref_plan_id   String?
+  operator_id   String?
+  idempotency_key String? @unique
+  debt_qty      Float      @default(0)
+  created_at    DateTime   @default(now())
+  ingredient    Ingredient @relation(fields: [ingredient_id], references: [id], onDelete: Cascade)
+  operator      User?      @relation(fields: [operator_id], references: [id], onDelete: SetNull)
+
+  @@index([ingredient_id, created_at])
+  @@index([reason])
+}
+
+model Recipe {
+  id           String   @id @default(cuid())
+  family_id    String?
+  name         String
+  meal_type    String
+  ingredients  Json
+  steps        Json
+  duration_min Int
+  tags         Json     @default("[]")
+  nutrition    Json?
+  image_url    String
+  source        String   @default("builtin")
+  review_status String   @default("approved")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  family       Family?  @relation(fields: [family_id], references: [id], onDelete: SetNull)
+  plans        Plan[]
+
+  @@index([meal_type])
+  @@index([name])
+}
+
+model AiUsage {
+  id               String   @id @default(cuid())
+  model            String
+  prompt_tokens    Int      @default(0)
+  completion_tokens Int     @default(0)
+  duration_ms      Int
+  status           String
+  created_at       DateTime @default(now())
+
+  @@index([created_at])
+  @@index([status, created_at])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  family_id   String?
+  date        DateTime
+  meal_type   String
+  recipe_id   String?
+  servings    Int      @default(1)
+  status      String   @default("planned")
+  planned_at  DateTime @default(now())
+  finished_at DateTime?
+  recipe      Recipe?  @relation(fields: [recipe_id], references: [id], onDelete: SetNull)
+  family      Family?  @relation(fields: [family_id], references: [id], onDelete: SetNull)
+
+  @@index([date, meal_type])
+}
+
+model Preference {
+  id         String   @id @default(cuid())
+  user_id    String
+  key        String
+  value      Json
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, key])
+}
+
+model ShoppingItem {
+  id            String      @id @default(cuid())
+  family_id     String?
+  user_id       String?
+  ingredient_id String?
+  name          String
+  quantity      Float       @default(1)
+  unit          String?
+  checked       Boolean     @default(false)
+  note          String?
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  family        Family?     @relation(fields: [family_id], references: [id], onDelete: SetNull)
+  user          User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  ingredient    Ingredient? @relation(fields: [ingredient_id], references: [id], onDelete: SetNull)
+
+  @@index([checked, created_at])
+}
+
+

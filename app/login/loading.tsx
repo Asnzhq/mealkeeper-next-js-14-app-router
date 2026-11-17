@@ -1,0 +1,2 @@
+import { zhCN } from "@/lib/i18n/zh-CN";
+export default function Loading() { return <main aria-label={zhCN.loading} className="mx-auto grid min-h-screen max-w-lg place-items-center px-4"><div className="w-full animate-pulse rounded-3xl bg-surface p-8 shadow-card"><div className="h-7 w-40 rounded bg-muted"/><div className="mt-6 h-12 rounded-xl bg-muted"/><div className="mt-3 h-12 rounded-xl bg-muted"/><div className="mt-6 h-12 rounded-xl bg-muted"/></div></main>; }

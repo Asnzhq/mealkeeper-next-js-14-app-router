@@ -1,0 +1,2 @@
+import { zhCN } from "@/lib/i18n/zh-CN";
+export default function IngredientsLoading(){return <main className="mx-auto max-w-6xl px-4 py-8" aria-label={zhCN.loadingIngredients} aria-busy="true"><div className="h-9 w-52 animate-pulse rounded-xl bg-muted"/><div className="mt-5 h-12 animate-pulse rounded-2xl bg-muted"/><div className="mt-6 grid gap-3 sm:grid-cols-2">{[1,2,3,4].map(x=><div key={x} className="h-28 animate-pulse rounded-2xl bg-muted"/>)}</div></main>}

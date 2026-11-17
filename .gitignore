@@ -1,0 +1,17 @@
+node_modules/
+.next/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+.env*
+public/uploads/
+
+test-results/
+playwright-report/
+out/
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+next-env.d.ts
+*.tsbuildinfo
