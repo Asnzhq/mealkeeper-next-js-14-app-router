@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const ingredientSchema = z.object({
-  name: z.string().trim().min(1), category: z.string().trim().min(1), unit: z.enum(["g", "kg", "斤", "两", "ml", "L", "个", "只", "勺"]),
+  name: z.string().trim().min(1).max(30), category: z.string().trim().min(1).max(30), unit: z.string().trim().min(1).max(20),
   stock_qty: z.number().finite().nonnegative().default(0), safety_stock: z.number().finite().nonnegative().default(0),
   storage: z.string().nullable().optional(), expiry_date: z.coerce.date().nullable().optional(),
   cost_per_unit: z.number().finite().nonnegative().default(0), tags: z.array(z.string()).default([]), family_id: z.string().nullable().optional(),

@@ -23,20 +23,29 @@ export const ingredientTemplates: IngredientTemplate[] = [
   {name:"生抽",category:"调料",unit:"ml",quantity:1,storage:"pantry",safety_stock:1,expiryDays:180,icon:"🫙"},
 ];
 
-export const ingredientCategories = [zhCN.allCategories,zhCN.vegetables,zhCN.fruits,zhCN.meats,zhCN.seafood,zhCN.dairy,zhCN.staples,zhCN.pantry,zhCN.seasonings] as const;
-export const ingredientUnits = ["g","kg","斤","两","ml","L","个","只","勺"] as const;
+export const ingredientCategories = [zhCN.allCategories,zhCN.vegetables,zhCN.fruits,zhCN.meats,zhCN.seafood,zhCN.dairy,zhCN.staples,zhCN.pantry,zhCN.seasonings,zhCN.otherCategory] as const;
+export const ingredientUnits = ["g","kg","斤","两","ml","L","个","只","勺","条","盒","把","根","棵","颗","块","袋","罐","头","份","捆"] as const;
 
 export interface ParsedIngredientLine { name: string; quantity: number; unit: string }
-export function parseIngredientLines(input: string): ParsedIngredientLine[] {
-  const parsed: ParsedIngredientLine[] = [];
-  for (const raw of input.split(/\r?\n/)) {
+export interface IngredientLineError { line: number; text: string; message: string }
+export interface IngredientParseResult { items: ParsedIngredientLine[]; errors: IngredientLineError[] }
+export function parseIngredientLines(input: string): IngredientParseResult {
+  const items: ParsedIngredientLine[] = [];
+  const errors: IngredientLineError[] = [];
+  for (const [index, raw] of input.split(/\r?\n/).entries()) {
     const line = raw.trim();
     if (!line) continue;
-    const match = line.match(/^(.+?)\s+([+-]?(?:\d+\.?\d*|\.\d+))\s*([\p{L}]+)$/u);
-    if (!match || Number(match[2]) <= 0 || !ingredientUnits.includes(match[3] as typeof ingredientUnits[number])) continue;
-    parsed.push({ name: match[1].trim(), quantity: Number(match[2]), unit: match[3] });
+    const match = line.match(/^(.+?)\s+([+-]?(?:\d+\.?\d*|\.\d+))\s*(\S+)$/u);
+    if (!match) { errors.push({ line: index + 1, text: line, message: zhCN.batchLineFormatError }); continue; }
+    const name = match[1].trim();
+    const quantity = Number(match[2]);
+    const unit = match[3].trim();
+    if (!name || name.length > 30) { errors.push({ line: index + 1, text: line, message: zhCN.ingredientNameLengthError }); continue; }
+    if (!Number.isFinite(quantity) || quantity <= 0) { errors.push({ line: index + 1, text: line, message: zhCN.batchQuantityError }); continue; }
+    if (!unit || unit.length > 20) { errors.push({ line: index + 1, text: line, message: zhCN.customUnitLengthError }); continue; }
+    items.push({ name, quantity, unit });
   }
-  return parsed;
+  return { items, errors };
 }
 
 export function matchIngredientTemplates(query: string): IngredientTemplate[] {
