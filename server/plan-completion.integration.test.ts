@@ -48,6 +48,24 @@ describe("做好菜后原子扣库存", () => {
     expect(reverse[0].delta).toBe(expectedUse);
   });
 
+  it("同一个计划撤销后可重新完成，并发重打卡只扣一次且仍可撤销", async () => {
+    const { ingredient, plan, originalStock, expectedUse } = await fixture();
+    const selection = [{ plan_id: plan.id }];
+    await completePlans(selection);
+    await undoPlanCompletion(plan.id);
+
+    await Promise.all([completePlans(selection), completePlans(selection)]);
+    expect((await prisma.ingredient.findUniqueOrThrow({ where: { id: ingredient.id } })).stock_qty)
+      .toBe(originalStock - expectedUse);
+    const logs = await prisma.inventoryLog.findMany({ where: { ref_plan_id: plan.id, reason: `plan:finish:${plan.id}` } });
+    expect(logs.map(({ delta }) => delta)).toEqual([-expectedUse, -expectedUse]);
+    expect(new Set(logs.map(({ idempotency_key }) => idempotency_key)).size).toBe(2);
+
+    await undoPlanCompletion(plan.id);
+    expect((await prisma.ingredient.findUniqueOrThrow({ where: { id: ingredient.id } })).stock_qty).toBe(originalStock);
+    expect((await prisma.plan.findUniqueOrThrow({ where: { id: plan.id } })).status).toBe("planned");
+  });
+
   it("超过24小时先要求二次确认，欠账撤销后库存与欠账均冲回", async () => {
     const { ingredient, plan, originalStock, expectedUse } = await fixture(40, 200);
     await completePlans([{ plan_id: plan.id }], { allow_debt: true, add_shortages_to_shopping: true });

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
 import { applyInventoryChange } from "@/server/inventory";
@@ -103,12 +104,16 @@ export async function completePlans(selections: CompletionSelection[], options: 
       if (entry.plan.status !== "finished") {
         const claim = await tx.plan.updateMany({ where: { id: entry.plan.id, status: "planned" }, data: { status: "finished", finished_at: new Date() } });
         if (claim.count !== 1) throw new Error("计划状态已变化，请刷新后重试");
+        // Only the transaction that claims this completion creates a new key.
+        // A later completion after undo needs its own inventory entries.
+        const completionId = randomUUID();
         for (const item of entry.usage) {
           const ingredient = await tx.ingredient.findUniqueOrThrow({ where: { id: item.ingredientId } });
           const physicalUse = Math.min(item.amount, ingredient.stock_qty);
           const debt = Math.max(0, item.amount - physicalUse);
           if (physicalUse === 0 && debt === 0) continue;
-          const result = await applyInventoryChange(tx, item.ingredientId, -item.amount, `plan:finish:${entry.plan.id}`, entry.plan.id, options.operator_id, `${entry.plan.id}:${item.ingredientId}`, debt);
+          const key = `${entry.plan.id}:${item.ingredientId}:${completionId}`;
+          const result = await applyInventoryChange(tx, item.ingredientId, -item.amount, `plan:finish:${entry.plan.id}`, entry.plan.id, options.operator_id, key, debt);
           changed.push({ plan_id: entry.plan.id, ingredient_id: item.ingredientId, stock_qty: result.ingredient.stock_qty, used: item.amount, debt });
           if (debt > 0 && options.add_shortages_to_shopping) {
             await tx.shoppingItem.create({ data: { ingredient_id: item.ingredientId, family_id: entry.plan.family_id, name: item.name, quantity: debt, unit: item.unit, note: `plan-debt:${entry.plan.id}` } });
@@ -133,16 +138,18 @@ export async function undoPlanCompletion(planId: string, confirmOld = false, ope
     const age = Date.now() - plan.finished_at.getTime();
     if (age > 24 * 60 * 60 * 1000 && !confirmOld) return { needs_confirmation: true as const, age_hours: Math.floor(age / 3600000) };
     const logs = await tx.inventoryLog.findMany({ where: { ref_plan_id: planId, reason: `plan:finish:${planId}` } });
+    let restored = 0;
     for (const original of logs) {
       const key = `undo:${original.idempotency_key ?? original.id}`;
       const exists = await tx.inventoryLog.findUnique({ where: { idempotency_key: key } });
       if (exists) continue;
       await applyInventoryChange(tx, original.ingredient_id, -original.delta, `plan:undo:${planId}`, planId, operatorId, key, -original.debt_qty);
+      restored += 1;
     }
     await tx.shoppingItem.deleteMany({ where: { note: `plan-debt:${planId}` } });
     const update = await tx.plan.updateMany({ where: { id: planId, status: "finished" }, data: { status: "planned", finished_at: null } });
     if (update.count !== 1) throw new Error("计划状态已变化，请刷新后重试");
-    return { needs_confirmation: false as const, plan_id: planId, restored: logs.length };
+    return { needs_confirmation: false as const, plan_id: planId, restored };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
