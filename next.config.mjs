@@ -44,7 +44,8 @@ const withAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true", o
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  images: { formats: ["image/avif", "image/webp"] },
+  output: "standalone",
+  images: { unoptimized: true },
 };
 
 export default withPWA(withAnalyzer(nextConfig));

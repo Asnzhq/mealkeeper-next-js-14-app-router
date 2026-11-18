@@ -30,20 +30,21 @@ test("新菜谱无封面显示占位图，上传后刷新仍显示本地封面",
     });
     await expect(page.getByRole("status")).toContainText("封面已更新");
     const coverImage = page.getByRole("img", { name, exact: true });
-    await expect(coverImage).toHaveAttribute("src", /_next\/image/);
+    await expect(coverImage).toHaveAttribute("src", /\/uploads\/recipes\//);
     uploadedUrl = (await coverImage.getAttribute("src")) ?? "";
+    await expect.poll(() => coverImage.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     const persisted = await request.get(`/api/recipes/${recipe.id}`);
     const persistedData = await persisted.json() as { data: Array<{ image_url: string }> };
     expect(persistedData.data[0]?.image_url).toMatch(/^\/uploads\/recipes\//);
+    expect(new URL(uploadedUrl, page.url()).pathname).toBe(persistedData.data[0]?.image_url);
     await page.reload();
-    await expect(page.getByRole("img", { name, exact: true })).toHaveAttribute("src", /_next\/image/);
+    await expect(coverImage).toHaveAttribute("src", uploadedUrl);
+    await expect.poll(() => coverImage.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     expect(externalRequests).toEqual([]);
   } finally {
     await request.delete(`/api/recipes/${recipe.id}`);
     if (uploadedUrl) {
-      const imageUrl = new URL(uploadedUrl, "http://localhost");
-      const storedPath = imageUrl.searchParams.get("url") ?? imageUrl.pathname;
-      const relative = decodeURIComponent(storedPath).replace(/^\//, "");
+      const relative = decodeURIComponent(new URL(uploadedUrl, page.url()).pathname).replace(/^\//, "");
       const target = path.resolve(process.cwd(), "public", relative);
       if (target.startsWith(path.resolve(process.cwd(), "public", "uploads") + path.sep)) await rm(target, { force: true });
     }
@@ -53,12 +54,13 @@ test("新菜谱无封面显示占位图，上传后刷新仍显示本地封面",
 test("本地封面文件缺失时卡片自动切换为占位图", async ({ page, request }) => {
   const name = `E2E缺图菜-${Date.now()}`;
   const recipe = await createRecipe(request, name, `/recipes/deleted-${Date.now()}.webp`);
-  const failedImages: string[] = [];
-  page.on("response", (response) => { if (response.request().resourceType() === "image" && response.status() >= 400) failedImages.push(response.url()); });
   try {
+    const missingImage = page.waitForRequest((request) =>
+      request.resourceType() === "image" && new URL(request.url()).pathname === recipe.image_url
+    );
     await page.goto(`/recipes/${recipe.id}`);
+    await missingImage;
     await expect(page.getByRole("img", { name: `${name}，示意图` }).first()).toBeVisible();
-    await expect.poll(() => failedImages.some((url) => url.includes("/_next/image?") && url.includes("deleted-"))).toBe(true);
   } finally {
     await request.delete(`/api/recipes/${recipe.id}`);
   }
