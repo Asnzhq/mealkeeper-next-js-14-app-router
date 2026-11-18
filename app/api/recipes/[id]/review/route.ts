@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import { z } from "zod";
 import { currentUser } from "@/server/session";
+import { serializeRecipe } from "@/server/recipe-record";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({ action: z.enum(["approve", "reject"]) }).strict();
@@ -14,5 +15,5 @@ export async function PATCH(request: Request, context: { params: { id: string } 
   if (!existing || existing.source !== "ai") return NextResponse.json({ code: 404, data: null, message: "没有找到待审核的 AI 菜谱" }, { status: 404 });
   const review_status = parsed.data.action === "approve" ? "approved" : "rejected";
   const recipe = await prisma.recipe.update({ where: { id: context.params.id }, data: { review_status } });
-  return NextResponse.json({ code: 0, data: recipe, message: "审核状态已更新" });
+  return NextResponse.json({ code: 0, data: serializeRecipe(recipe), message: "审核状态已更新" });
 }

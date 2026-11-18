@@ -6,7 +6,19 @@ export const ingredientSchema = z.object({
   storage: z.string().nullable().optional(), expiry_date: z.coerce.date().nullable().optional(),
   cost_per_unit: z.number().finite().nonnegative().default(0), tags: z.array(z.string()).default([]), family_id: z.string().nullable().optional(),
 });
-export const recipeSchema = z.object({ name: z.string().min(1), meal_type: z.string().min(1), ingredients: z.array(z.object({ ingredient_id: z.string().min(1), name: z.string().trim().min(1).optional(), role: z.enum(["main", "side", "seasoning"]).optional(), quantity: z.number().positive(), unit: z.enum(["g", "kg", "斤", "两", "ml", "L", "个", "只", "勺"]).optional() })), steps: z.array(z.string().min(1)).min(3), duration_min: z.number().int().positive(), tags: z.array(z.string()).default([]), nutrition: z.unknown().optional(), image_url: z.string().trim().max(500).refine((value) => value === "" || (value.startsWith("/") && !value.startsWith("//")) || /^https?:\/\//i.test(value), "图片地址必须为空、本地路径或 HTTP(S) 地址").default(""), family_id: z.string().nullable().optional() });
+const coverUrl = z.string().trim().max(500).refine((value) => {
+  if (!value) return true;
+  if (value.startsWith("/")) return !value.startsWith("//") && !value.includes("\\");
+  if (!/^https?:\/\//i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}, "图片地址必须为空、本地路径或 HTTP(S) 地址").nullable().optional();
+
+export const recipeSchema = z.object({ name: z.string().min(1), meal_type: z.string().min(1), ingredients: z.array(z.object({ ingredient_id: z.string().min(1), name: z.string().trim().min(1).optional(), role: z.enum(["main", "side", "seasoning"]).optional(), quantity: z.number().positive(), unit: z.enum(["g", "kg", "斤", "两", "ml", "L", "个", "只", "勺"]).optional() })), steps: z.array(z.string().min(1)).min(3), duration_min: z.number().int().positive(), tags: z.array(z.string()).default([]), nutrition: z.unknown().optional(), imageUrl: coverUrl, image_url: coverUrl, family_id: z.string().nullable().optional() });
 export const planSchema = z.object({ date: z.coerce.date(), meal_type: z.string().min(1), recipe_id: z.string().nullable().optional(), servings: z.number().int().positive().default(1), status: z.enum(["planned", "finished", "skipped"]).default("planned"), family_id: z.string().nullable().optional() });
 export const shoppingSchema = z.object({ name: z.string().min(1), quantity: z.number().positive().default(1), unit: z.string().optional(), checked: z.boolean().default(false), note: z.string().optional(), ingredient_id: z.string().nullable().optional(), family_id: z.string().nullable().optional(), user_id: z.string().nullable().optional() });
 export const changeSchema = z.object({ delta: z.number().finite().refine((v) => v !== 0), reason: z.string().min(1), ref_plan_id: z.string().nullable().optional(), operator_id: z.string().nullable().optional() });

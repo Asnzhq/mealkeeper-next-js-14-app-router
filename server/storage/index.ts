@@ -43,7 +43,7 @@ class S3CompatibleStorage implements ObjectStorage {
     const signingKey = sign(sign(sign(sign(`AWS4${secretKey}`, dateStamp), region), "s3"), "aws4_request");
     const signature = sign(signingKey, stringToSign).toString("hex");
     const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-    const response = await fetch(url, { method: "PUT", headers: { ...headers, Authorization: authorization }, body: Buffer.from(bytes) });
+    const response = await fetch(url, { method: "PUT", headers: { ...headers, Authorization: authorization }, body: Uint8Array.from(bytes) });
     if (!response.ok) throw new Error(`对象存储上传失败：${response.status}`);
     return { key, url: `${publicBase.replace(/\/$/, "")}/${safeKey}`, contentType, size: bytes.byteLength };
   }

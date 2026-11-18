@@ -37,7 +37,7 @@ export default async function RecipePage({ params }: { params: { id: string } })
     ingredients: normalizeIngredients(row.ingredients), steps: normalizeSteps(row.steps), duration_min: row.duration_min,
     tags: Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === "string") : [],
     nutrition: typeof nutrition?.calories === "number" ? { calories: nutrition.calories } : undefined,
-    image_url: row.image_url, source: row.source, review_status: row.review_status,
+    imageUrl: row.imageUrl, source: row.source, review_status: row.review_status,
   };
   return <AppShell><RecipeDetail recipe={data} /></AppShell>;
 }

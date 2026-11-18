@@ -32,8 +32,8 @@ export async function POST(request: Request, context: { params: { id: string } }
     const localCookie = request.headers.get("cookie")?.split(";").some((part) => part.trim() === "mealkeeper-local-mode=1");
     const localAccount = actor ? (await prisma.user.findUnique({ where: { id: actor.id }, select: { local_mode: true } }))?.local_mode : false;
     const stored = await getObjectStorage(Boolean(localCookie || localAccount)).put(`recipes/${recipe.id}/cover/${crypto.randomUUID()}.${extension}`, bytes, file.type);
-    await prisma.recipe.update({ where: { id: recipe.id }, data: { image_url: stored.url } });
-    return NextResponse.json({ code: 0, data: { image_url: stored.url }, message: zhCN.coverImageUploaded });
+    await prisma.recipe.update({ where: { id: recipe.id }, data: { imageUrl: stored.url } });
+    return NextResponse.json({ code: 0, data: { imageUrl: stored.url, image_url: stored.url }, message: zhCN.coverImageUploaded });
   } catch {
     return fail(zhCN.coverImageUploadError, 500);
   }

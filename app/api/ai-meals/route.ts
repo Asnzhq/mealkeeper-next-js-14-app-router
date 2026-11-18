@@ -29,15 +29,15 @@ async function persistAiRecipe(item: MealsOutput["meals"][number]["recipes"][num
       const stock = input.inventory.find((entry) => entry.name.trim() === ingredient.name.trim());
       return { ...ingredient, ingredient_id: ingredient.ingredient_id ?? stock?.ingredient_id ?? null };
     }),
-    steps: item.steps, duration_min: item.duration_min, tags: item.tags, nutrition: { calories: item.calories ?? null }, image_url: placeholder, source: "ai", review_status: "pending",
+    steps: item.steps, duration_min: item.duration_min, tags: item.tags, nutrition: { calories: item.calories ?? null }, source: "ai", review_status: "pending",
   } });
   const plannerRecipe: PlannerRecipe = {
     id: recipe.id, name: recipe.name, meal_type: mealType,
     ingredients: item.ingredients.map((ingredient) => ({ ...ingredient, ingredient_id: ingredient.ingredient_id ?? input.inventory.find((entry) => entry.name.trim() === ingredient.name.trim())?.ingredient_id })),
     steps: item.steps.map((step) => step.instruction), duration_min: item.duration_min, tags: item.tags,
-    nutrition: { calories: item.calories ?? undefined }, image_url: recipe.image_url, cookware_required: item.cookware_required,
+    nutrition: { calories: item.calories ?? undefined }, image_url: recipe.imageUrl ?? undefined, cookware_required: item.cookware_required,
   };
-  return { recipe: plannerRecipe, pending: { id: recipe.id, name: recipe.name, steps: item.steps, review_status: recipe.review_status, image_url: recipe.image_url } };
+  return { recipe: plannerRecipe, pending: { id: recipe.id, name: recipe.name, steps: item.steps, review_status: recipe.review_status, image_url: recipe.imageUrl ?? placeholder } };
 }
 
 export async function POST(request: Request) {

@@ -1,3 +1,4 @@
+// Historical PostgreSQL baseline. The active schema is prisma/schema.prisma.
 generator client {
   provider = "prisma-client-js"
 }

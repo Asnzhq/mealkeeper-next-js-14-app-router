@@ -8,4 +8,7 @@ node_modules
 test-results
 playwright-report
 outputs
+out
+*.sqlite
+*.sqlite3
 public/uploads

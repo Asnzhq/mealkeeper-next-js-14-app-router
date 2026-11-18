@@ -47,11 +47,11 @@ async function main() {
   const recipes = [...buildSeedRecipes(), ...newRecipes];
   validateRecipeImageAssets(recipes, path.resolve(process.cwd(), "public", "recipes"));
   for (const recipe of recipes) {
-    const { id, ...data } = recipe;
+    const { id, image_url, ...data } = recipe;
     await prisma.recipe.upsert({
       where: { id },
-      update: { ...data, image_url: data.image_url || undefined } as Prisma.RecipeUncheckedUpdateInput,
-      create: { id, ...data } as Prisma.RecipeUncheckedCreateInput,
+      update: { ...data, imageUrl: image_url || undefined } as Prisma.RecipeUncheckedUpdateInput,
+      create: { id, ...data, imageUrl: image_url || null } as Prisma.RecipeUncheckedCreateInput,
     });
   }
 }

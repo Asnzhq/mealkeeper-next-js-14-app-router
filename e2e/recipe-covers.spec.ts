@@ -34,12 +34,18 @@ test("新菜谱无封面显示占位图，上传后刷新仍显示本地封面",
     uploadedUrl = (await coverImage.getAttribute("src")) ?? "";
     await expect.poll(() => coverImage.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     const persisted = await request.get(`/api/recipes/${recipe.id}`);
-    const persistedData = await persisted.json() as { data: Array<{ image_url: string }> };
-    expect(persistedData.data[0]?.image_url).toMatch(/^\/uploads\/recipes\//);
-    expect(new URL(uploadedUrl, page.url()).pathname).toBe(persistedData.data[0]?.image_url);
+    const persistedData = await persisted.json() as { data: Array<{ imageUrl: string; image_url: string }> };
+    expect(persistedData.data[0]?.imageUrl).toMatch(/^\/uploads\/recipes\//);
+    expect(new URL(uploadedUrl, page.url()).pathname).toBe(persistedData.data[0]?.imageUrl);
+    expect(persistedData.data[0]?.image_url).toBe(persistedData.data[0]?.imageUrl);
     await page.reload();
     await expect(coverImage).toHaveAttribute("src", uploadedUrl);
     await expect.poll(() => coverImage.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await page.goto("/recipes");
+    const listCover = page.locator(`a[href="/recipes/${recipe.id}"]`).getByRole("img", { name, exact: true });
+    await listCover.scrollIntoViewIfNeeded();
+    await expect(listCover).toHaveAttribute("src", uploadedUrl);
+    await expect.poll(() => listCover.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     expect(externalRequests).toEqual([]);
   } finally {
     await request.delete(`/api/recipes/${recipe.id}`);
@@ -68,13 +74,13 @@ test("本地封面文件缺失时卡片自动切换为占位图", async ({ page,
 
 test("扩充后的 52 道内置菜谱显示占位，且没有失败的图片请求", async ({ page, request }) => {
   const apiResponse = await request.get("/api/recipes");
-  const recipes = await apiResponse.json() as { data: Array<{ id: string; name: string; meal_type: string; image_url: string }> };
+  const recipes = await apiResponse.json() as { data: Array<{ id: string; name: string; meal_type: string; imageUrl: string | null }> };
   const builtins = recipes.data.filter((recipe) => recipe.id.startsWith("seed-recipe-"));
   expect(builtins).toHaveLength(52);
   for (const [type, minimum] of [["breakfast", 12], ["lunch", 20], ["dinner", 20]] as const) {
     expect(builtins.filter((recipe) => recipe.meal_type === type).length).toBeGreaterThanOrEqual(minimum);
   }
-  expect(builtins.every((recipe) => recipe.image_url === "")).toBe(true);
+  expect(builtins.every((recipe) => recipe.imageUrl === null)).toBe(true);
 
   const placeholderRequests: string[] = [];
   const failedImages: string[] = [];

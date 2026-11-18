@@ -13,7 +13,7 @@ import { ImageLightbox, RecipeVisual, type GalleryImage } from "@/components/rec
 
 interface ApiResponse<T> { code: number; data: T; message: string }
 interface InventoryItem { id: string; name: string; unit: string; stock_qty: number }
-export interface RecipeDetailData extends Omit<PlannerRecipe, "steps" | "image_url"> { image_url?: string | null; steps: CookingStep[]; source?: string; review_status?: string }
+export interface RecipeDetailData extends Omit<PlannerRecipe, "steps" | "image_url"> { imageUrl: string | null; steps: CookingStep[]; source?: string; review_status?: string }
 
 async function loadInventory(): Promise<InventoryItem[]> {
   const response = await fetch("/api/ingredients");
@@ -37,12 +37,12 @@ export function RecipeDetail({ recipe }: { recipe: RecipeDetailData }) {
   const [cooking, setCooking] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
-  const [coverImage, setCoverImage] = useState(recipe.image_url ?? "");
+  const [coverImage, setCoverImage] = useState(recipe.imageUrl);
   const [coverUploadError, setCoverUploadError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const inventoryQuery = useQuery({ queryKey: ["recipe-detail", "inventory"], queryFn: loadInventory });
   const inventory = inventoryQuery.data ?? [];
-  const scaled = useMemo(() => scaleRecipe({ ...recipe, image_url: recipe.image_url ?? undefined, steps: recipe.steps.map((step) => step.instruction) }, servings), [recipe, servings]);
+  const scaled = useMemo(() => scaleRecipe({ ...recipe, steps: recipe.steps.map((step) => step.instruction) }, servings), [recipe, servings]);
   const steps = recipe.steps.length ? recipe.steps : [{ title: zhCN.cookingMethod, instruction: zhCN.noRecipeSteps }];
   const gallery: GalleryImage[] = steps.map((step, index) => ({ src: step.image_url, alt: `${recipe.name}，${zhCN.stepLabel}${index + 1}`, placeholderName: recipe.name }));
 
@@ -53,9 +53,9 @@ export function RecipeDetail({ recipe }: { recipe: RecipeDetailData }) {
     try {
       const form = new FormData(); form.set("file", file);
       const response = await fetch(`/api/recipes/${encodeURIComponent(recipe.id)}/cover`, { method: "POST", body: form });
-      const result = await response.json() as ApiResponse<{ image_url: string }>;
-      if (!response.ok || result.code >= 400 || !result.data?.image_url) throw new Error(result.message || zhCN.coverImageUploadError);
-      setCoverImage(result.data.image_url); setNotice(zhCN.coverImageUploaded);
+      const result = await response.json() as ApiResponse<{ imageUrl: string }>;
+      if (!response.ok || result.code >= 400 || !result.data?.imageUrl) throw new Error(result.message || zhCN.coverImageUploadError);
+      setCoverImage(result.data.imageUrl); setNotice(zhCN.coverImageUploaded);
     } catch (error) {
       setCoverUploadError(error instanceof Error ? error.message : zhCN.coverImageUploadError);
     } finally { setCoverUploading(false); }

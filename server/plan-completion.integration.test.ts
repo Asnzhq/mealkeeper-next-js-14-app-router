@@ -7,7 +7,7 @@ async function fixture(stock = 500, used = 200) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const ingredient = await prisma.ingredient.create({ data: { name: `事务测试食材-${suffix}`, category: "测试", unit: "g", stock_qty: stock } });
   created.ingredients.push(ingredient.id);
-  const recipe = await prisma.recipe.create({ data: { name: `事务测试菜-${suffix}`, meal_type: "dinner", ingredients: [{ ingredient_id: ingredient.id, name: ingredient.name, quantity: used / 2, unit: "g" }], steps: ["准备", "烹饪", "完成"], duration_min: 20, tags: [], image_url: "https://example.test/placeholder.svg" } });
+  const recipe = await prisma.recipe.create({ data: { name: `事务测试菜-${suffix}`, meal_type: "dinner", ingredients: [{ ingredient_id: ingredient.id, name: ingredient.name, quantity: used / 2, unit: "g" }], steps: ["准备", "烹饪", "完成"], duration_min: 20, tags: [], imageUrl: "https://example.test/placeholder.svg" } });
   created.recipes.push(recipe.id);
   const plan = await prisma.plan.create({ data: { date: new Date(), meal_type: "dinner", recipe_id: recipe.id, servings: 2 } });
   created.plans.push(plan.id);

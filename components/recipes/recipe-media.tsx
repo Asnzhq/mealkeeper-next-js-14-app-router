@@ -33,7 +33,8 @@ export function RecipeVisual({ src, name, className = "" }: { src?: string | nul
   if (!showImage) return <RecipePlaceholder name={name} className={className} />;
   return <div className={`relative isolate overflow-hidden bg-muted ${className}`}>
     {!loaded && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-muted" />}
-    <Image width={1200} height={800} unoptimized={src?.startsWith("http") ?? false} loading="lazy" src={src!} alt={name} sizes="(max-width: 768px) 100vw, 900px" className={`h-full w-full object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+    {/* eslint-disable-next-line @next/next/no-img-element -- Covers are loaded directly from storage. */}
+    <img width={1200} height={800} loading="lazy" decoding="async" src={src!} alt={name} className={`h-full w-full object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
   </div>;
 }
 
