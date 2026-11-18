@@ -2,8 +2,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
 
 const baseURL = "http://127.0.0.1:3000";
-if (!process.env.DATABASE_URL) throw new Error("请通过 DATABASE_URL 指定本地 PostgreSQL。");
-const environment = { ...process.env, NEXTAUTH_URL: baseURL, NEXTAUTH_SECRET: "mealkeeper-pwa-smoke-secret" };
+const environment = { ...process.env, DATABASE_URL: process.env.DATABASE_URL ?? "file:./dev.db", NEXTAUTH_URL: baseURL, NEXTAUTH_SECRET: "mealkeeper-pwa-smoke-secret" };
 const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1"], { env: environment, stdio: "ignore" });
 let browser;
 try {

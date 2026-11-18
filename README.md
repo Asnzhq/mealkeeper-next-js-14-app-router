@@ -11,26 +11,23 @@ pnpm seed
 pnpm dev
 ```
 
-先启动 PostgreSQL，创建 `mealkeeper` 数据库，再填写 `.env` 的 `DATABASE_URL`。开发与部署使用同一个 `prisma/schema.prisma`，`prisma.config.ts` 指向 `prisma/postgres/migrations`。旧 SQLite 迁移留作历史记录。执行 `pnpm test` 与 `pnpm test:e2e` 前，创建独立的 PostgreSQL 测试库并设置 `TEST_DATABASE_URL`。测试会在该库内使用专用 schema。
+本地默认使用 `file:./dev.db`，文件位于 `prisma/dev.db`。新数据库使用上述迁移命令初始化；已有本地开发库可执行 `pnpm exec prisma db push` 同步 schema。测试使用独立 SQLite 文件，不需要数据库服务。之前的 PostgreSQL 迁移保留在 `prisma/postgres/`，当前运行不使用该目录。
 
-## CloudBase 云托管与托管 PostgreSQL
+## CloudBase 云托管试运行
 
-1. 在可从云托管服务访问的网络内开通 PostgreSQL，创建空数据库 `mealkeeper` 和应用用户。托管数据库按服务要求开启 TLS。
-2. 在云托管服务的环境变量中设置 `DATABASE_URL`、`NEXTAUTH_SECRET` 和公网 HTTPS 的 `NEXTAUTH_URL`。例如 `postgresql://USER:PASSWORD@HOST:5432/mealkeeper?schema=public&sslmode=require`。密码中的特殊字符需 URL 编码。应用和迁移应使用可直连的数据库地址。
-3. 使用仓库根目录的 Dockerfile 发布新版本，端口为 3000。容器启动时执行 `prisma migrate deploy`。从能访问同一数据库的环境执行一次 `pnpm seed`，导入 52 道内置菜谱。
-4. 验证登录、食材读写和菜谱列表，并配置数据库备份。封面 URL 随数据库持久化；上传文件用对象存储或独立持久卷保存。
+使用仓库根目录的 Dockerfile，端口设为 3000，最多运行一个副本。镜像内含全新 SQLite 和 52 道内置菜谱。容器首次启动时初始化数据库，有已有数据文件时只应用待执行迁移。`DATABASE_URL` 默认是 `file:/app/data/mealkeeper.sqlite`。
 
-换库会创建新表，现有 SQLite 试运行数据不会自动转入 PostgreSQL。需要保留试用数据时，切换前先从试用实例导出；应用内导出覆盖食材、流水和计划。
+云托管未挂载持久存储时，容器重建或版本替换可能重置试用数据。重新部署前可在应用内导出食材、流水和计划。上传图片需使用对象存储或持久卷才能跨容器保留。
 
 ## Docker Compose 部署
 
-准备域名 DNS A/AAAA 记录指向服务器，复制 `env.example` 到 `.env`，并设置至少 `POSTGRES_PASSWORD`、`NEXTAUTH_SECRET`、`NEXTAUTH_URL=https://meal.example.com`。生成密钥可使用 `openssl rand -base64 32`。启动：
+准备域名 DNS A/AAAA 记录指向服务器，复制 `env.example` 到 `.env`，并设置 `NEXTAUTH_SECRET` 和 `NEXTAUTH_URL=https://meal.example.com`。生成密钥可使用 `openssl rand -base64 32`。启动：
 
 ```bash
 docker compose up -d --build
 ```
 
-PostgreSQL 仅在 Compose 网络内可见，Next.js 绑定到主机 `127.0.0.1:3000`。需要对象存储时以 `docker compose --profile storage up -d` 启动可选 MinIO，并设置对象存储变量。生产可使用托管 OSS/COS/R2，密钥只存放在服务端环境变量中。
+SQLite 和本地上传分别保存在 `sqlite-data` 与 `uploads` 卷中，Next.js 绑定到主机 `127.0.0.1:3000`。需要对象存储时以 `docker compose --profile storage up -d` 启动可选 MinIO，并设置对象存储变量。生产可使用托管 OSS/COS/R2，密钥只存放在服务端环境变量中。
 
 ### Nginx 反向代理与 HTTPS
 
@@ -61,18 +58,15 @@ server { listen 80; server_name meal.example.com; return 301 https://$host$reque
 
 将证书续期加入 Certbot 定时任务并执行 `nginx -t && systemctl reload nginx`。CSP、鉴权和 API 限流由应用层提供。
 
-### 每日备份与恢复
+### SQLite 备份
 
-`scripts/backup-postgres.sh` 通过 `pg_dump` 导出 gzip 文件，并删除超过 30 天的本地备份。加入每日 cron（建议凌晨 02:30）：
-
-```cron
-30 2 * * * cd /srv/mealkeeper && POSTGRES_USER=mealkeeper POSTGRES_DB=mealkeeper ./scripts/backup-postgres.sh >> /var/log/mealkeeper-backup.log 2>&1
-```
-
-将 `BACKUP_DIR` 指向受限权限目录，并定期把备份复制到异机或对象存储；部署目录与备份介质不要放在同一块磁盘。恢复示例：
+停止应用后复制数据目录，避免拷贝时有数据库写入。备份可能包含账户数据和本地会话密钥，应只保存在受限目录。
 
 ```bash
-gzip -dc backups/mealkeeper-YYYY-MM-DDTHH-MM-SSZ.sql.gz | docker compose exec -T postgres psql -U mealkeeper -d mealkeeper
+mkdir -p backups
+docker compose stop app
+docker compose cp app:/app/data "./backups/mealkeeper-$(date +%F)"
+docker compose start app
 ```
 
 ## 性能报告

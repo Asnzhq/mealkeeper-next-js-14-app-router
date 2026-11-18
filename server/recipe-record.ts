@@ -7,7 +7,8 @@ export function recipeWriteData<T extends RecipeCoverInput>(input: T) {
 }
 
 export function serializeRecipe<T extends { imageUrl: string | null }>(recipe: T) {
-  return { ...recipe, image_url: recipe.imageUrl ?? "" };
+  const imageUrl = recipe.imageUrl || null;
+  return { ...recipe, imageUrl, image_url: imageUrl ?? "" };
 }
 
 export function serializePlan<T extends { recipe: { imageUrl: string | null } | null }>(plan: T) {

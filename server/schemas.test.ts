@@ -36,5 +36,6 @@ describe("recipe cover contract", () => {
     expect(recipeWriteData(recipeSchema.parse({ ...draft, imageUrl: null })).imageUrl).toBeNull();
     expect(recipeSchema.safeParse({ ...draft, imageUrl: "//example.test/cover.png" }).success).toBe(false);
     expect(serializeRecipe({ imageUrl: null })).toEqual({ imageUrl: null, image_url: "" });
+    expect(serializeRecipe({ imageUrl: "" })).toEqual({ imageUrl: null, image_url: "" });
   });
 });

@@ -16,8 +16,7 @@
     "test:e2e": "playwright test",
     "seed": "tsx prisma/seed.ts",
     "validate:recipe-assets": "node prisma/validate-recipe-assets.mjs",
-    "db:migrate": "prisma migrate dev",
-    "db:prepare-postgres": "node scripts/prepare-postgres.mjs"
+    "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -31,7 +30,6 @@
     "next": "^14.2.15",
     "next-auth": "4.24.11",
     "next-pwa": "^5.6.0",
-    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.2",

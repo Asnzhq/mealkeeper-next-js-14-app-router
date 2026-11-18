@@ -5,10 +5,13 @@ node_modules
 .env.*
 *.db
 *.db-journal
+*.db-*
 test-results
 playwright-report
 outputs
 out
 *.sqlite
 *.sqlite3
+*.sqlite-*
+*.sqlite3-*
 public/uploads

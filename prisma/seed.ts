@@ -1,10 +1,10 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import path from "node:path";
 import builtinRecipeImages from "@/prisma/recipe-seed-images.json";
 import newRecipes from "@/prisma/recipe-seed-additions.json";
 import { validateRecipeImageAssets } from "@/server/recipe-assets.mjs";
+import { prisma } from "@/server/db";
 
-const prisma = new PrismaClient();
 const mealTypes = ["breakfast", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "breakfast", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner", "lunch", "dinner"];
 const dishTypes = ["素菜", "荤菜", "荤菜", "荤菜", "荤菜", "荤菜", "荤菜", "荤菜", "荤菜", "素菜", "荤菜", "主食", "主食", "素菜", "荤菜", "素菜", "素菜", "主食", "素菜", "荤菜", "素菜", "荤菜", "荤菜", "荤菜", "荤菜", "素菜", "荤菜", "荤菜", "荤菜", "荤菜"];
 const ingredientNames = [
